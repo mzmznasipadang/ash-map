@@ -3,6 +3,39 @@
 A Next.js + Leaflet prototype that plots **real** Volcanic Ash Advisory (VAA)
 polygons and **live** wind vectors on a map.
 
+## Deploy
+
+**Vercel** (what this is set up for): import the repo at
+[vercel.com/new](https://vercel.com/new). Next.js is detected automatically,
+there is nothing to configure, and no environment variables exist to set — the
+app uses no API keys.
+
+Two things to know about running the FTP route on serverless:
+
+- **Outbound FTP.** `/api/darwin` opens a plain socket to `ftp.bom.gov.au`
+  (passive mode). Vercel's Node runtime allows it, but verify it on the first
+  deploy rather than assuming: hit `/api/darwin?area=indonesia` and check the
+  `fetch` block in the response is non-zero. If a platform blocks non-HTTP
+  egress, that route is the only thing that breaks; the rest of the app works.
+- **Cold starts drop the cache.** The bulletin cache lives in memory plus the
+  OS temp dir, neither of which survives a cold start, so a cold request
+  re-downloads the live slots. That is 8 small files and about 4 seconds, so
+  it is cheap — but on a busy deployment, moving the cache to a durable store
+  (Vercel KV, Upstash, any Redis) restores the "download each bulletin once"
+  property. `lib/bulletin-cache.ts` is the only file that needs to change; it
+  already has a get/set/has interface.
+
+`maxDuration = 30` is declared on both FTP routes because the serverless
+default is 10s and a cold fetch is ~4s, which leaves no headroom if BOM is slow.
+
+**GitHub Pages will not work.** It serves static files only, and all four API
+routes do server-side network work (FTP, an Open-Meteo proxy, a CORS-avoiding
+HTML fetch). A static export would leave a map that cannot load anything.
+
+**A container host** (Fly.io, Railway, Render) is the better technical fit if
+this becomes more than a prototype: one long-lived process keeps the cache
+warm, there is no function timeout, and the filesystem persists.
+
 ## Run it
 
 ```bash
