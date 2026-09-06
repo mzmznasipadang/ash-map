@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DarwinFeed, type DarwinFeedState, type FeedItem } from "@/components/darwin-feed";
 import { RawBulletin } from "@/components/raw-bulletin";
 import { Credits } from "@/components/credits";
+import { Dtg, TimeModeIcon, TimeModeToggle } from "@/components/time-mode";
 
 function Section({
   title,
@@ -199,7 +200,9 @@ export function AdvisoryPanel({
                 {advisory.dtg && (
                   <>
                     <dt>Issued</dt>
-                    <dd className="font-mono text-foreground">{advisory.dtg}</dd>
+                    <dd className="font-mono text-foreground">
+                      <Dtg value={advisory.dtg} />
+                    </dd>
                   </>
                 )}
                 {advisory.area && (
@@ -217,7 +220,15 @@ export function AdvisoryPanel({
                 {advisory.nextAdvisory && (
                   <>
                     <dt>Next</dt>
-                    <dd className="text-foreground">{advisory.nextAdvisory}</dd>
+                    <dd className="text-foreground">
+                      {/* The field is prose wrapped around a DTG, e.g. "NO LATER
+                          THAN 20260906/1730Z", so reformat just the DTG. */}
+                      {advisory.nextAdvisory.replace(/\d{8}\/\d{4}Z?/, "").trim()}{" "}
+                      <Dtg
+                        className="font-mono"
+                        value={advisory.nextAdvisory.match(/\d{8}\/\d{4}Z?/)?.[0]}
+                      />
+                    </dd>
                   </>
                 )}
               </dl>
@@ -233,7 +244,7 @@ export function AdvisoryPanel({
                     {frames.map((f) => (
                       <li key={f} className="flex items-center justify-between gap-2 font-mono">
                         <span className="text-foreground">{f}</span>
-                        <span>{frameDtg(advisory, f) ?? "—"}</span>
+                        <Dtg value={frameDtg(advisory, f)} reference={advisory.dtg} />
                       </li>
                     ))}
                   </ul>
@@ -327,6 +338,10 @@ export function AdvisoryPanel({
           <RawBulletin raw={advisory.raw} />
         </Section>
       )}
+
+      <Section title="Times &amp; time zone" defaultOpen={false} icon={<TimeModeIcon />}>
+        <TimeModeToggle />
+      </Section>
 
       <Section title="Wind overlay" icon={<Wind className="size-4 text-muted-foreground" aria-hidden="true" />}>
         <div className="flex items-center justify-between gap-2">

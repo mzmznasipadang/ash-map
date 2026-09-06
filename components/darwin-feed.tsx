@@ -6,6 +6,15 @@ import { Loader2, RefreshCw } from "lucide-react";
 import type { FrameKey, VaaAdvisory } from "@/lib/vaa";
 import type { AshAssessment } from "@/lib/eruption";
 import { Badge } from "@/components/ui/badge";
+import { Dtg } from "@/components/time-mode";
+import { Label } from "@/components/ui/label";
+
+/** An ISO instant as a full DTG, so <Dtg> can render it in the chosen mode. */
+function toDtg(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}/${p(d.getUTCHours())}${p(d.getUTCMinutes())}Z`;
+}
 import { Button } from "@/components/ui/button";
 
 export type FeedItem = {
@@ -40,7 +49,32 @@ function writeLastSeen(file: string) {
   }
 }
 
-const POLL_MS = 5 * 60 * 1000; // matches the route's cache window
+// Darwin re-advises a volcano at most hourly, so polling faster than this
+// spends someone else's bandwidth for nothing. 30 minutes is the default;
+// "Off" is offered because an unattended tab should not poll forever.
+export const REFRESH_INTERVALS = [
+  { ms: 0, label: "Off" },
+  { ms: 15 * 60 * 1000, label: "15 min" },
+  { ms: 30 * 60 * 1000, label: "30 min" },
+  { ms: 60 * 60 * 1000, label: "1 hour" },
+] as const;
+
+const DEFAULT_INTERVAL_MS = 30 * 60 * 1000;
+const INTERVAL_KEY = "ash-map:refresh-interval";
+
+function readInterval(): number {
+  try {
+    const raw = localStorage.getItem(INTERVAL_KEY);
+    // Check for absence BEFORE converting: Number(null) is 0, and 0 is a real
+    // option here ("Off"), so a missing preference would silently disable
+    // auto-refresh instead of using the default.
+    if (raw === null) return DEFAULT_INTERVAL_MS;
+    const stored = Number(raw);
+    return REFRESH_INTERVALS.some((i) => i.ms === stored) ? stored : DEFAULT_INTERVAL_MS;
+  } catch {
+    return DEFAULT_INTERVAL_MS;
+  }
+}
 
 export type DarwinFeedState = {
   items: FeedItem[] | null;
@@ -55,6 +89,9 @@ export type DarwinFeedState = {
   unseen: Set<string>;
   area: string | null;
   setArea: (area: string | null) => void;
+  /** Auto-refresh period in ms; 0 means off. */
+  intervalMs: number;
+  setIntervalMs: (ms: number) => void;
   reload: (force?: boolean) => void;
   acknowledge: () => void;
 };
@@ -82,6 +119,18 @@ export function useDarwinFeed({
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const areaRef = useRef<string | null>("indonesia");
   const autoPlotted = useRef(false);
+  const [intervalMs, setIntervalMsState] = useState<number>(DEFAULT_INTERVAL_MS);
+  const lastCheck = useRef(0);
+
+  // Pick up the stored preference during render rather than in an effect: the
+  // server has no localStorage, so it always renders the default and this
+  // corrects it on the client without a second commit.
+  const [readStoredInterval, setReadStoredInterval] = useState(false);
+  if (!readStoredInterval && typeof window !== "undefined") {
+    setReadStoredInterval(true);
+    const stored = readInterval();
+    if (stored !== intervalMs) setIntervalMsState(stored);
+  }
 
   const load = useCallback(async (force = false) => {
     // Yield before touching state so this is safe to call from an effect: the
@@ -95,6 +144,7 @@ export function useDarwinFeed({
       if (areaRef.current) params.set("area", areaRef.current);
       if (force) params.set("refresh", "1");
 
+      lastCheck.current = Date.now();
       const res = await fetch(`/api/darwin?${params}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Feed unavailable");
@@ -129,17 +179,39 @@ export function useDarwinFeed({
 
   useEffect(() => {
     let cancelled = false;
+
     const tick = () => {
       // Poll only while the tab is visible — this is someone else's FTP server.
       if (!cancelled && document.visibilityState === "visible") load();
     };
+
     tick();
-    timer.current = setInterval(tick, POLL_MS);
+
+    // Coming back to a tab that sat hidden past the interval should show fresh
+    // data immediately, not whatever was on screen when it was backgrounded.
+    const onVisible = () => {
+      if (cancelled || document.visibilityState !== "visible") return;
+      if (intervalMs > 0 && Date.now() - lastCheck.current >= intervalMs) load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    if (intervalMs > 0) timer.current = setInterval(tick, intervalMs);
+
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
       if (timer.current) clearInterval(timer.current);
     };
-  }, [load]);
+  }, [load, intervalMs]);
+
+  const setIntervalMs = useCallback((ms: number) => {
+    setIntervalMsState(ms);
+    try {
+      localStorage.setItem(INTERVAL_KEY, String(ms));
+    } catch {
+      // private window; the preference just will not persist
+    }
+  }, []);
 
   const setArea = useCallback(
     (next: string | null) => {
@@ -173,6 +245,8 @@ export function useDarwinFeed({
     unseen,
     area,
     setArea,
+    intervalMs,
+    setIntervalMs,
     reload: load,
     acknowledge,
   };
@@ -185,14 +259,30 @@ export function DarwinFeed({
   state: DarwinFeedState;
   onSelect: (item: FeedItem) => void;
 }) {
-  const { items, total, error, loading, stale, fetchedAt, unseen, area, setArea, reload: load, acknowledge } = state;
+  const {
+    items,
+    total,
+    error,
+    loading,
+    stale,
+    fetchedAt,
+    unseen,
+    area,
+    setArea,
+    intervalMs,
+    setIntervalMs,
+    reload: load,
+    acknowledge,
+  } = state;
+  const intervalLabel = REFRESH_INTERVALS.find((i) => i.ms === intervalMs)?.label ?? "Off";
   const hidden = total - (items?.length ?? 0);
 
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          Newest Darwin VAAC bulletins, straight from BOM&apos;s public FTP. Refreshes every 5 minutes.
+          Newest Darwin VAAC bulletins, straight from BOM&apos;s public FTP.
+          {intervalMs > 0 ? ` Checked every ${intervalLabel}.` : " Auto-refresh is off."}
         </p>
         <Button
           variant="outline"
@@ -292,7 +382,7 @@ export function DarwinFeed({
                     )}
                   </span>
                   <span className="font-mono text-muted-foreground">
-                    {item.advisory.dtg ?? item.issued} · #{item.advisory.advisoryNr ?? "—"}
+                    <Dtg value={item.advisory.dtg} /> · #{item.advisory.advisoryNr ?? "—"}
                   </span>
                   <span className="text-muted-foreground">{item.ash.summary}</span>
                 </button>
@@ -302,10 +392,30 @@ export function DarwinFeed({
         </ul>
       )}
 
+      <div className="space-y-2 border-t pt-3">
+        <Label htmlFor="refresh-interval" className="text-xs">
+          Auto-refresh
+        </Label>
+        <div className="flex flex-wrap items-center gap-1" id="refresh-interval" role="group">
+          {REFRESH_INTERVALS.map((opt) => (
+            <Button
+              key={opt.ms}
+              variant={intervalMs === opt.ms ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={intervalMs === opt.ms}
+              onClick={() => setIntervalMs(opt.ms)}
+              className="h-7 text-xs"
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex items-center justify-between gap-2 pt-1">
         {fetchedAt ? (
           <p className="text-xs text-muted-foreground">
-            Checked {new Date(fetchedAt).toISOString().slice(11, 16)}Z
+            Checked <Dtg value={toDtg(fetchedAt)} />
           </p>
         ) : (
           <span />

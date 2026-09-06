@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Polygon, Marker, Popup, useMapEvents } from "r
 import L from "leaflet";
 import gsap from "gsap";
 import { useTheme } from "next-themes";
-import { Pause, Play, SkipBack } from "lucide-react";
+import { Gauge, Pause, Play, SkipBack } from "lucide-react";
 
 import { frameDtg, framePolygons, type FrameKey, type VaaAdvisory } from "@/lib/vaa";
 import { buildTrack, lerpRing, MORPH_VERTICES } from "@/lib/morph";
@@ -15,12 +15,17 @@ import { flightLevelCeiling, flightLevelColor, windColor } from "@/lib/style";
 import type { WindVector } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTimeMode } from "@/components/time-mode";
+import { formatDtg, parseDtg } from "@/lib/dtg";
 
 type Bounds = { north: number; south: number; east: number; west: number };
 
 export type PlottedAdvisory = { id: string; advisory: VaaAdvisory; frames: FrameKey[] };
 
 const SECONDS_PER_FRAME = 1.8;
+
+/** Playback rates offered in the transport. */
+const SPEEDS = [1, 2, 4, 6, 12] as const;
 
 const BASEMAPS = {
   light:
@@ -148,6 +153,7 @@ export default function AshMap({
   onExport?: (item: PlottedAdvisory) => void;
 }) {
   const { resolvedTheme } = useTheme();
+  const { mode: timeMode } = useTimeMode();
 
   const selected = useMemo(
     () => advisories.find((a) => a.id === selectedId) ?? advisories[0] ?? null,
@@ -173,11 +179,13 @@ export default function AshMap({
   );
   const canAnimate = frames.length > 1 && selectedTracks.length > 0;
 
+  const speedRef = useRef(1);
   const layerRefs = useRef<(L.Polygon | null)[]>([]);
   const timeline = useRef<gsap.core.Timeline | null>(null);
   const scrubber = useRef<HTMLInputElement | null>(null);
   const readout = useRef<HTMLSpanElement | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState<number>(1);
 
   // A new selection builds a fresh paused timeline, so the transport falls back
   // to "stopped". Adjusting here rather than in the effect avoids a second pass.
@@ -193,9 +201,11 @@ export default function AshMap({
       if (frames.length === 0 || !selected) return "";
       const i = Math.min(frames.length - 1, Math.round(t));
       const dtg = frameDtg(selected.advisory, frames[i]);
-      return dtg ? `${frames[i]} · ${dtg}` : frames[i];
+      if (!dtg) return frames[i];
+      const reference = parseDtg(selected.advisory.dtg);
+      return `${frames[i]} · ${formatDtg(dtg, timeMode, reference)}`;
     },
-    [selected, frames]
+    [selected, frames, timeMode]
   );
 
   // Push interpolated shapes straight at Leaflet. Routing this through React
@@ -241,6 +251,7 @@ export default function AshMap({
       tl.to(state, { t: hops, duration: hops * SECONDS_PER_FRAME });
     }
 
+    tl.timeScale(speedRef.current);
     timeline.current = tl;
     draw(0);
 
@@ -266,6 +277,14 @@ export default function AshMap({
   const restart = () => {
     timeline.current?.pause().progress(0);
     setPlaying(false);
+  };
+
+  const cycleSpeed = () => {
+    const next = SPEEDS[(SPEEDS.indexOf(speed as (typeof SPEEDS)[number]) + 1) % SPEEDS.length];
+    setSpeed(next);
+    speedRef.current = next;
+    // timeScale applies live, so this takes effect mid-playback.
+    timeline.current?.timeScale(next);
   };
 
   const scrub = (value: number) => {
@@ -405,6 +424,16 @@ export default function AshMap({
             </Button>
             <Button size="icon" variant="ghost" onClick={restart} aria-label="Back to observation">
               <SkipBack className="size-4" aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={cycleSpeed}
+              aria-label={`Playback speed ${speed} times. Click to change.`}
+              className="h-8 shrink-0 gap-1 px-2 font-mono text-xs tabular-nums"
+            >
+              <Gauge className="size-3.5" aria-hidden="true" />
+              {speed}&times;
             </Button>
 
             {/* ponytail: native range input, not the shadcn Slider. The timeline

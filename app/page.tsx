@@ -10,6 +10,7 @@ import { WIND_LEVELS } from "@/lib/style";
 import { AdvisoryPanel } from "@/components/advisory-panel";
 import { useDarwinFeed, type FeedItem } from "@/components/darwin-feed";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TimeModeProvider } from "@/components/time-mode";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -235,7 +236,8 @@ export default function Home() {
   );
 
   return (
-    <div className="flex h-full flex-col">
+    <TimeModeProvider>
+      <div className="flex h-full flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-4">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
@@ -285,7 +287,8 @@ export default function Home() {
             }}
           />
         </main>
+        </div>
       </div>
-    </div>
+    </TimeModeProvider>
   );
 }
