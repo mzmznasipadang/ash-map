@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
+import type { PlottedAdvisory } from "@/components/AshMap";
+
 const AshMap = dynamic(() => import("@/components/AshMap"), { ssr: false });
 
 // A few real, currently-public Washington VAAC advisories you can load with
@@ -58,11 +60,43 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const [advisory, setAdvisory] = useState<VaaAdvisory | null>(null);
-  const [frames, setFrames] = useState<FrameKey[]>([]);
+  // Everything currently drawn on the map. The feed fills this with every
+  // volcano under advisory; a pasted or fetched bulletin replaces it.
+  const [plotted, setPlotted] = useState<PlottedAdvisory[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [minFlightLevel, setMinFlightLevel] = useState(0);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
 
-  // One poller for the page; the panel below is rendered twice.
-  const feed = useDarwinFeed();
+  const selected = plotted.find((p) => p.id === selectedId) ?? plotted[0] ?? null;
+  const advisory = selected?.advisory ?? null;
+  const frames = selected?.frames ?? [];
+  const visible = plotted.filter((p) => !hidden.has(p.id));
+
+  // The feed hands over every advisory at once, so the map opens showing every
+  // volcano currently under advisory rather than one.
+  const showAll = useCallback((items: FeedItem[]) => {
+    const layers: PlottedAdvisory[] = items.map((i) => ({
+      id: i.file,
+      advisory: i.advisory,
+      frames: i.frames,
+    }));
+    setPlotted(layers);
+    setSelectedId(layers[0]?.id ?? null);
+    setHidden(new Set());
+    setError(null);
+  }, []);
+
+  const showOne = useCallback((item: PlottedAdvisory) => {
+    setPlotted([item]);
+    setSelectedId(item.id);
+    setHidden(new Set());
+    setTextInput(item.advisory.raw);
+    setError(null);
+  }, []);
+
+  // One poller for the page (the panel below is rendered twice). It plots the
+  // newest live advisory on first load, so the map opens with real ash on it.
+  const feed = useDarwinFeed({ onFirstLoad: showAll });
 
   const [showWind, setShowWind] = useState(true);
   const [windLevel, setWindLevel] = useState(WIND_LEVELS[2].hpa);
@@ -76,8 +110,7 @@ export default function Home() {
   const windSettings = useRef({ level: WIND_LEVELS[2].hpa, enabled: true });
 
   const applyResult = (result: { advisory: VaaAdvisory; frames: FrameKey[] }) => {
-    setAdvisory(result.advisory);
-    setFrames(result.frames);
+    showOne({ id: `loaded-${result.advisory.advisoryNr ?? Date.now()}`, ...result });
     setSheetOpen(false);
   };
 
@@ -181,13 +214,23 @@ export default function Home() {
       onWindLevel={handleWindLevel}
       feed={feed}
       onSelectFeedItem={(item: FeedItem) => {
-        // The feed route already parsed it; no second round trip.
-        setAdvisory(item.advisory);
-        setFrames(item.frames);
-        setTextInput(item.advisory.raw);
-        setError(null);
+        // Already on the map; clicking the list just focuses it.
+        setSelectedId(item.file);
         setSheetOpen(false);
       }}
+      plotted={plotted}
+      selectedId={selected?.id ?? null}
+      hidden={hidden}
+      onToggleLayer={(id: string) =>
+        setHidden((prev) => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        })
+      }
+      minFlightLevel={minFlightLevel}
+      onMinFlightLevel={setMinFlightLevel}
     />
   );
 
@@ -225,10 +268,18 @@ export default function Home() {
 
         <main className="relative min-h-0 flex-1">
           <AshMap
-            advisory={advisory}
+            advisories={visible}
+            selectedId={selected?.id ?? null}
+            onSelect={setSelectedId}
+            minFlightLevel={minFlightLevel}
             windVectors={windVectors}
             showWind={showWind}
             onBoundsChange={handleBounds}
+            onExport={(item) => {
+              setSelectedId(item.id);
+              // Straight from the map icon to the GIS plot.
+              window.open(`/api/darwin/geojson?limit=5${feed.area ? `&area=${feed.area}` : ""}`, "_blank", "noopener");
+            }}
           />
         </main>
       </div>

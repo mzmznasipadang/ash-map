@@ -170,3 +170,59 @@ test("both label spellings parse to the same frames", () => {
   );
   assert.equal(spaced.forecasts[0].polygons.length, 1);
 });
+
+// A real live Darwin slot (IDY41280.txt). Two traps:
+//   1. "EST VA CLD" not "OBS VA CLD" — the cloud is modelled from the last
+//      confirmed sighting because satellite cannot see it now.
+//   2. "EST VA DTG" contains the substring "DTG", so a parser that only knows
+//      the bare DTG label overwrites the advisory's issue time with this
+//      field's contents, and never plots the cloud at all.
+const DUKONO_ESTIMATED = `FVAU01 ADRM 061300
+VA ADVISORY
+DTG: 20260906/1300Z
+VAAC: DARWIN
+VOLCANO: DUKONO 268010
+PSN: N0142 E12754
+AREA: INDONESIA
+SOURCE ELEV: 1229M AMSL
+ADVISORY NR: 2026/718
+INFO SOURCE: HIMAWARI-9
+ERUPTION DETAILS: VA TO FL070 LAST OBS AT 06/0250Z MOV NE
+EST VA DTG: 06/1240Z
+EST VA CLD: SFC/FL070 N0138 E12748 - N0228 E12732 - N0229
+        E12818 - N0138 E12800 MOV N 05KT
+FCST VA CLD +6 HR: 06/1840Z SFC/FL070 N0138 E12748 - N0228
+        E12732 - N0229 E12818 - N0138 E12800
+FCST VA CLD +12 HR: 07/0040Z SFC/FL070 N0138 E12748 - N0228
+        E12732 - N0229 E12818 - N0138 E12800
+RMK: VA NOT IDENTIFIABLE ON CURRENT SATELLITE IMAGERY. MET
+        CLD OBSC AREA.
+NXT ADVISORY: NO LATER THAN 20260906/1900Z=`;
+
+test("the advisory DTG is not clobbered by EST VA DTG", () => {
+  const a = parseVaaText(DUKONO_ESTIMATED);
+  // The regression: this used to become "06/1240Z EST VA CLD: SFC/FL070 ...".
+  assert.equal(a.dtg, "20260906/1300Z");
+  assert.equal(a.volcano, "DUKONO");
+  assert.equal(a.advisoryNr, "2026/718");
+});
+
+test("an estimated cloud is parsed and flagged as estimated", () => {
+  const a = parseVaaText(DUKONO_ESTIMATED);
+  assert.equal(a.observation.estimated, true, "estimated flag not set");
+  assert.equal(a.observation.dtg, "06/1240Z");
+  assert.equal(a.observation.polygons.length, 1, "the estimated cloud was dropped");
+  assert.equal(a.observation.polygons[0].flightLevel, "SFC/FL070");
+  assert.equal(a.observation.polygons[0].movement, "MOV N 05KT");
+  // It occupies the OBS slot on the timeline, so the current cloud is drawn.
+  assert.deepEqual(availableFrames(a), ["OBS", "+6HR", "+12HR"]);
+});
+
+test("an observed cloud is not flagged as estimated", () => {
+  const a = parseVaaText(`VOLCANO: SEMERU 263300
+OBS VA DTG: 06/1200Z
+OBS VA CLD: SFC/FL150 S0805 E11250 - S0801 E11254 - S0805 E11321 - S0805 E11250 MOV SE 05KT`);
+  assert.equal(a.observation.estimated, undefined);
+  assert.equal(a.observation.dtg, "06/1200Z");
+  assert.equal(a.observation.polygons.length, 1);
+});

@@ -54,31 +54,69 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
    mid-tween. Polygons are matched across frames by flight level, so the
    FL500 cloud morphs into the next FL500 cloud.
 
-4. **Darwin VAAC feed** — `/api/darwin` polls BOM's anonymous FTP
-   (`ftp://ftp.bom.gov.au/anon/gen/vaac/<year>/IDY41315.<YYYYMMDDHHMM>.txt`)
-   for the newest Darwin text bulletins and returns them parsed. No auth, no
+4. **Darwin VAAC feed** — `/api/darwin` polls BOM's anonymous FTP. No auth, no
    key. There is no HTTPS path for that tree, and the BOM aviation web page
    renders its list client-side, so FTP is the machine-readable route.
+
+   **Two trees, and only one is live.** `/anon/gen/fwo/` holds the current
+   products: one slot per volcano under advisory (`IDY41280.txt`,
+   `IDY41285.txt`, ...), each containing that volcano's latest bulletin under a
+   fixed name. The dated `/anon/gen/vaac/<year>/` tree is an archive and lags
+   real time by days. Poll the archive and you get last week's eruption; poll
+   one slot and you see one volcano out of five. The route reads every slot
+   (`?live=0` for the archive).
+
+   Slot-to-volcano assignment is not fixed, so the only correct approach is to
+   read each slot and see what is in it. Slots are mutable — same name, new
+   content — so their cache key carries the server modified time.
 
    Responses are cached 5 minutes server-side, concurrent requests collapse
    onto one FTP session, and a failed fetch serves the last good data rather
    than an error. The directory holds ~8000 entries per year, mostly PNG
    charts, so the listing uses a server-side glob (~1s instead of ~10s).
 
+   **Polling cost.** A published bulletin is immutable, so it is downloaded
+   once and cached by filename (memory, plus a best-effort copy in the OS temp
+   dir that survives restarts). A poll then costs one directory listing plus
+   only the files that are genuinely new. Measured on the same call twice:
+
+   ```
+   call 1 (cold): {scanned: 20, downloaded: 20, fromCache: 0}
+   call 2 (warm): {scanned: 20, downloaded: 0,  fromCache: 20}
+   ```
+
+   Every response carries that `fetch` block, so the cost is visible rather
+   than assumed. Other levers already in place: a 5-minute server cache,
+   concurrent requests collapsed onto one FTP session, and client polling that
+   pauses while the tab is hidden.
+
+   Most bulletins are stand-downs with nothing to plot, so the scan reads up to
+   40 files back looking for ones that carry ash, then stops. Advisories are
+   deduplicated to the newest per volcano (`?group=0` for the full history).
+
    *Deployment note*: this opens an outbound FTP connection. Fine on a server
    or container; many serverless platforms block non-HTTP egress.
 
-5. **Raw bulletin view** — the exact text as issued, with a copy button. The
+5. **Every volcano at once** — the feed plots the newest advisory for *every*
+   volcano currently under advisory, not one. The map fits the view to all of
+   them, the selected one animates, the rest render dashed and low-contrast as
+   context. Click any volcano icon (or its polygon) to move the timeline to it,
+   or jump straight to its GIS plot.
+
+   Controls in *Layers on the map*: show/hide each volcano, and a flight-level
+   floor ("FL300 and above") for when only ash at cruising altitude matters.
+
+6. **Raw bulletin view** — the exact text as issued, with a copy button. The
    parsed view is a convenience; the bulletin is the source of truth.
 
-6. **Wind projection** — `/api/wind` queries
+7. **Wind projection** — `/api/wind` queries
    [Open-Meteo](https://open-meteo.com) (free, no API key) for wind
    speed/direction at a chosen pressure level across a grid covering the
    current map view, and draws it as rotated arrows colored by speed.
    Longitudes are normalized before the upstream call — Leaflet reports
    out-of-range bounds past the antimeridian, which Open-Meteo rejects.
 
-7. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
+8. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
    detail card, and a legend; a slide-over panel below `lg`; light/dark theme
    with a toggle in the header.
 
@@ -98,10 +136,19 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
 - **"Paste raw VAA text"** parses any raw VAA text you give it — the reliable
   path for Tokyo/London/Toulouse. Copy the advisory text from the VAAC's own
   page, a PDF, or an email alert, and paste it in.
-- **Format differences are real.** Darwin writes `FCST VA CLD +6 HR:` with a
-  space where Washington writes `+6HR:`, and BOM appends a copyright block
-  after the bulletin's `=` terminator. Both are handled; both are covered by
-  tests built from a real Darwin bulletin.
+- **Format differences are real**, and every one of these silently lost data
+  before it was handled. All are covered by tests built from real bulletins:
+  - Darwin writes `FCST VA CLD +6 HR:` with a space; Washington writes `+6HR:`.
+  - BOM appends a copyright block after the bulletin's `=` terminator.
+  - Coordinates wrap across lines mid-pair (`S1111\nE10619` is one vertex).
+  - `EST VA CLD` (estimated) replaces `OBS VA CLD` when satellite cannot
+    confirm the cloud. Four of five live Indonesian volcanoes use it. Worse,
+    `EST VA DTG` contains the substring `DTG`, so a parser knowing only the
+    bare `DTG` label overwrites the issue time with the estimated cloud's text
+    and never plots the cloud. Estimated clouds are flagged, and reported as
+    "estimated" rather than "observed" — a real difference in confidence.
+  - One advisory carries several flight-level bands moving in *different*
+    directions, so drift is tracked per band, never advisory-wide.
 - For a full list of active advisories worldwide right now, see
   https://www.volcanodiscovery.com/news/vaac/latest-reports.html or each
   VAAC's own site (Darwin: bom.gov.au/aviation/volcanic-ash/, Tokyo:
@@ -136,8 +183,12 @@ flight-level bands.
   non-VAAC hosts via the allowlist.
 - `/api/wind` returns live vectors, including for views crossing the
   antimeridian and for flipped/overscrolled bounds.
-- `/api/darwin` was exercised against the live BOM server: 5 real AMBAE
-  bulletins (advisories 2026/91-95), ~8.6s cold, ~20ms cached.
+- `/api/darwin` was exercised against the live BOM server: real KRAKATAU
+  (Indonesia) and LANGILA (PNG) advisories, grouped to one layer per volcano,
+  with the file cache serving 23 of 23 files on a repeat call.
+- In the browser: two volcanoes render as two layers, the view fits both,
+  hiding a layer drops it from the map, and an "FL100 and above" floor
+  correctly clears two FL40/FL60 clouds.
 - In the browser: the map recenters on a loaded advisory, wind arrows appear
   before any interaction, toggling and level changes refetch, the timeline
   morphs OBS to +6HR and stops cleanly, and the basemap follows the theme.
@@ -168,6 +219,7 @@ app/
   layout.tsx             theme provider
   api/advisory/route.ts  fetch-or-parse a VAA text advisory -> GeoJSON
   api/darwin/route.ts    poll BOM's FTP for the newest Darwin bulletins
+  api/darwin/geojson/    one FeatureCollection for GIS, area-filterable
   api/wind/route.ts      wind vector grid from Open-Meteo
 components/
   AshMap.tsx             Leaflet map, GSAP timeline, transport bar
@@ -181,6 +233,9 @@ lib/
   coords.ts              "N1428 W09052" -> [lat, lon]
   vaa.ts                 VAA text parser + GeoJSON builder
   darwin.ts              BOM FTP client + product-file selection
+  area.ts                Indonesia bbox + area matching
+  bulletin-cache.ts      immutable-file cache (memory + temp dir)
+  eruption.ts            per-band ash status, height and drift
   morph.ts               ring resampling / alignment / interpolation
   grid.ts                wind sampling grid, longitude normalization
   style.ts               flight-level / wind-speed color scales

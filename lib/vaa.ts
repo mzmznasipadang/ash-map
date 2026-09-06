@@ -22,6 +22,7 @@
 // NXT ADVISORY: WILL BE ISSUED BY 20260905/2045Z
 
 import { parseCoord, type LatLon } from "./coords.ts";
+import { flightLevelCeiling } from "./style.ts";
 
 export type AshPolygon = {
   flightLevel: string; // e.g. "SFC/FL140"
@@ -32,6 +33,12 @@ export type AshPolygon = {
 export type CloudFrame = {
   dtg?: string;
   polygons: AshPolygon[];
+  /**
+   * True when this came from EST VA CLD rather than OBS VA CLD: the cloud is
+   * modelled from the last confirmed observation, not currently visible on
+   * satellite. Worth surfacing — it is a real difference in confidence.
+   */
+  estimated?: boolean;
 };
 
 export type VaaAdvisory = {
@@ -63,6 +70,12 @@ const FIELD_LABELS = [
   "ADVISORY NR",
   "INFO SOURCE",
   "ERUPTION DETAILS",
+  // "EST VA ..." must be listed: when satellite cannot confirm a cloud, Darwin
+  // issues EST (estimated) instead of OBS. Worse, "EST VA DTG" *contains*
+  // "DTG", so without its own label the scanner matches the bare DTG field and
+  // overwrites the advisory's issue time with the estimated cloud's text.
+  "EST VA DTG",
+  "EST VA CLD",
   "OBS VA DTG",
   "OBS VA CLD",
   // Darwin issues "FCST VA CLD +6 HR:", Washington "FCST VA CLD +6HR:" — the
@@ -152,8 +165,16 @@ export function parseVaaText(raw: string): VaaAdvisory {
   const volcano = (volMatch ? volMatch[1] : volcanoField).trim() || undefined;
   const volcanoNumber = volMatch?.[2];
 
-  const observation = parseCloudField(fields["OBS VA CLD"]);
-  if (!observation.dtg) observation.dtg = fields["OBS VA DTG"];
+  // Prefer an observed cloud; fall back to an estimated one.
+  const observedField = fields["OBS VA CLD"];
+  const estimatedField = fields["EST VA CLD"];
+  const useEstimated = !observedField?.trim() && !!estimatedField?.trim();
+
+  const observation = parseCloudField(useEstimated ? estimatedField : observedField);
+  if (useEstimated) observation.estimated = true;
+  if (!observation.dtg) {
+    observation.dtg = useEstimated ? fields["EST VA DTG"] : fields["OBS VA DTG"];
+  }
 
   const forecasts = ([6, 12, 18, 24] as const)
     .map((hour) => {
@@ -223,5 +244,43 @@ export function frameGeoJSON(advisory: VaaAdvisory, frame: FrameKey) {
         coordinates: [p.vertices.map(([lat, lon]) => [lon, lat])],
       },
     })),
+  };
+}
+
+/**
+ * Every frame of an advisory as ONE FeatureCollection, with the advisory's
+ * identity copied onto each feature.
+ *
+ * frameGeoJSON is shaped for the map, which already knows which advisory it is
+ * showing. A file handed to QGIS or ArcGIS has no such context, so each feature
+ * has to carry the volcano, the VAAC, the issue time and the frame itself.
+ */
+export function advisoryGeoJSON(advisory: VaaAdvisory) {
+  const frames = availableFrames(advisory);
+
+  return {
+    type: "FeatureCollection" as const,
+    features: frames.flatMap((frame) =>
+      framePolygons(advisory, frame).map((p) => ({
+        type: "Feature" as const,
+        properties: {
+          volcano: advisory.volcano ?? null,
+          volcanoNumber: advisory.volcanoNumber ?? null,
+          vaac: advisory.vaac ?? null,
+          area: advisory.area ?? null,
+          advisoryNr: advisory.advisoryNr ?? null,
+          dtg: advisory.dtg ?? null,
+          frame,
+          frameDtg: frameDtg(advisory, frame) ?? null,
+          flightLevel: p.flightLevel,
+          flightLevelCeiling: flightLevelCeiling(p.flightLevel),
+          movement: p.movement ?? null,
+        },
+        geometry: {
+          type: "Polygon" as const,
+          coordinates: [p.vertices.map(([lat, lon]) => [lon, lat])],
+        },
+      }))
+    ),
   };
 }

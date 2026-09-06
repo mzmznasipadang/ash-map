@@ -7,24 +7,20 @@ import gsap from "gsap";
 import { useTheme } from "next-themes";
 import { Pause, Play, SkipBack } from "lucide-react";
 
-import { availableFrames, frameDtg, framePolygons, type FrameKey, type VaaAdvisory } from "@/lib/vaa";
+import { frameDtg, framePolygons, type FrameKey, type VaaAdvisory } from "@/lib/vaa";
 import { buildTrack, lerpRing, MORPH_VERTICES } from "@/lib/morph";
+import { assessAsh } from "@/lib/eruption";
 import type { LatLon } from "@/lib/coords";
-import { flightLevelColor, windColor } from "@/lib/style";
+import { flightLevelCeiling, flightLevelColor, windColor } from "@/lib/style";
 import type { WindVector } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 type Bounds = { north: number; south: number; east: number; west: number };
 
-// Seconds of playback per hop between advisory frames.
-const SECONDS_PER_FRAME = 1.8;
+export type PlottedAdvisory = { id: string; advisory: VaaAdvisory; frames: FrameKey[] };
 
-// Under prefers-reduced-motion the timeline still works — it just steps between
-// frames instead of tweening across them. The feature stays, the motion goes.
-function prefersReducedMotion() {
-  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
+const SECONDS_PER_FRAME = 1.8;
 
 const BASEMAPS = {
   light:
@@ -32,12 +28,20 @@ const BASEMAPS = {
   dark: "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
 };
 
-function volcanoIcon() {
+// Under prefers-reduced-motion the timeline steps between frames instead of
+// tweening across them. The feature stays, the motion goes.
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function volcanoIcon(selected: boolean) {
   return L.divIcon({
     className: "",
-    // 24x24 is the WCAG 2.2 target-size floor, and the emoji is decorative:
-    // the marker's own title carries the name.
-    html: `<div aria-hidden="true" style="display:grid;place-items:center;width:24px;height:24px;font-size:20px;line-height:1;filter:drop-shadow(0 0 2px #000)">🌋</div>`,
+    // 24x24 is the WCAG 2.2 target-size floor; the emoji is decorative and the
+    // marker's title carries the name.
+    html: `<div aria-hidden="true" style="display:grid;place-items:center;width:24px;height:24px;font-size:${
+      selected ? 22 : 17
+    }px;line-height:1;filter:drop-shadow(0 0 2px #000)${selected ? "" : ";opacity:.75"}">🌋</div>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
   });
@@ -54,16 +58,14 @@ function windIcon(vec: WindVector) {
   });
 }
 
-// MapContainer's `center` is init-only, so recentering has to go through the
-// map instance. Reporting bounds on mount too, not just on moveend, is what
+// MapContainer's `center` is init-only, so moving the view has to go through
+// the map instance. Reporting bounds on mount too, not just on moveend, is what
 // gets the wind overlay its first fetch before the user touches the map.
 function MapSync({
-  lat,
-  lon,
+  fit,
   onBoundsChange,
 }: {
-  lat?: number;
-  lon?: number;
+  fit: LatLon[] | null;
   onBoundsChange: (b: Bounds) => void;
 }) {
   const emit = useCallback(
@@ -75,32 +77,39 @@ function MapSync({
   );
 
   const map = useMapEvents({ moveend: () => emit(map) });
+  const fitKey = fit ? fit.map((p) => p.join()).join("|") : "";
 
   useEffect(() => {
     emit(map);
   }, [map, emit]);
 
   useEffect(() => {
-    if (lat != null && lon != null) map.setView([lat, lon], map.getZoom());
-  }, [map, lat, lon]);
+    if (!fit || fit.length === 0) return;
+    // One volcano is a recentre; several is a fit, so every advisory is on screen.
+    if (fit.length === 1) map.setView(fit[0], map.getZoom());
+    else map.fitBounds(L.latLngBounds(fit.map(([lat, lon]) => L.latLng(lat, lon))), { padding: [60, 60] });
+    // fitKey is the stable identity of the point set; `fit` is a fresh array each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, fitKey]);
 
   return null;
 }
 
 type Track = {
   flightLevel: string;
+  ceiling: number;
   movement?: string;
   /** One ring per frame, all the same length and rotationally aligned. */
   rings: LatLon[][];
 };
 
 /**
- * Group the advisory's polygons into one track per flight-level band, so the
+ * Group one advisory's polygons into a track per flight-level band, so the
  * FL500 cloud morphs into the next frame's FL500 cloud rather than into
  * whichever polygon happens to share its array index.
  */
-function buildTracks(advisory: VaaAdvisory | null, frames: FrameKey[]): Track[] {
-  if (!advisory || frames.length === 0) return [];
+function buildTracks(advisory: VaaAdvisory, frames: FrameKey[]): Track[] {
+  if (frames.length === 0) return [];
 
   const perFrame = frames.map((f) => framePolygons(advisory, f));
   const levels = [...new Set(perFrame.flat().map((p) => p.flightLevel))];
@@ -109,6 +118,7 @@ function buildTracks(advisory: VaaAdvisory | null, frames: FrameKey[]): Track[] 
     const matches = perFrame.map((polys) => polys.find((p) => p.flightLevel === flightLevel) ?? null);
     return {
       flightLevel,
+      ceiling: flightLevelCeiling(flightLevel),
       movement: matches.find((m) => m?.movement)?.movement,
       rings: buildTrack(
         matches.map((m) => m?.vertices ?? null),
@@ -119,22 +129,49 @@ function buildTracks(advisory: VaaAdvisory | null, frames: FrameKey[]): Track[] 
 }
 
 export default function AshMap({
-  advisory,
+  advisories,
+  selectedId,
+  onSelect,
+  minFlightLevel = 0,
   windVectors,
   showWind,
   onBoundsChange,
+  onExport,
 }: {
-  advisory: VaaAdvisory | null;
+  advisories: PlottedAdvisory[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  minFlightLevel?: number;
   windVectors: WindVector[];
   showWind: boolean;
   onBoundsChange: (b: Bounds) => void;
+  onExport?: (item: PlottedAdvisory) => void;
 }) {
   const { resolvedTheme } = useTheme();
-  const center: [number, number] = advisory?.position ?? [0, 120];
 
-  const frames = useMemo(() => (advisory ? availableFrames(advisory) : []), [advisory]);
-  const tracks = useMemo(() => buildTracks(advisory, frames), [advisory, frames]);
-  const canAnimate = frames.length > 1 && tracks.length > 0;
+  const selected = useMemo(
+    () => advisories.find((a) => a.id === selectedId) ?? advisories[0] ?? null,
+    [advisories, selectedId]
+  );
+  const EMPTY_FRAMES = useMemo<FrameKey[]>(() => [], []);
+  const frames = selected?.frames ?? EMPTY_FRAMES;
+
+  // Every advisory gets its bands; only the selected one is animated.
+  const layers = useMemo(
+    () =>
+      advisories.map((item) => ({
+        item,
+        tracks: buildTracks(item.advisory, item.frames).filter((t) => t.ceiling >= minFlightLevel),
+      })),
+    [advisories, minFlightLevel]
+  );
+
+  const EMPTY_TRACKS = useMemo<Track[]>(() => [], []);
+  const selectedTracks = useMemo(
+    () => layers.find((l) => l.item.id === selected?.id)?.tracks ?? EMPTY_TRACKS,
+    [layers, selected?.id, EMPTY_TRACKS]
+  );
+  const canAnimate = frames.length > 1 && selectedTracks.length > 0;
 
   const layerRefs = useRef<(L.Polygon | null)[]>([]);
   const timeline = useRef<gsap.core.Timeline | null>(null);
@@ -142,10 +179,9 @@ export default function AshMap({
   const readout = useRef<HTMLSpanElement | null>(null);
   const [playing, setPlaying] = useState(false);
 
-  // A new advisory builds a fresh paused timeline, so the transport has to fall
-  // back to "stopped". Adjusting it here rather than in the effect below keeps
-  // it out of a second render pass.
-  const trackKey = `${advisory?.advisoryNr ?? "none"}:${frames.join(",")}`;
+  // A new selection builds a fresh paused timeline, so the transport falls back
+  // to "stopped". Adjusting here rather than in the effect avoids a second pass.
+  const trackKey = `${selected?.id ?? "none"}:${frames.join(",")}:${minFlightLevel}`;
   const [renderedKey, setRenderedKey] = useState(trackKey);
   if (trackKey !== renderedKey) {
     setRenderedKey(trackKey);
@@ -154,21 +190,21 @@ export default function AshMap({
 
   const frameLabel = useCallback(
     (t: number) => {
-      if (frames.length === 0) return "";
+      if (frames.length === 0 || !selected) return "";
       const i = Math.min(frames.length - 1, Math.round(t));
-      const dtg = advisory ? frameDtg(advisory, frames[i]) : undefined;
+      const dtg = frameDtg(selected.advisory, frames[i]);
       return dtg ? `${frames[i]} · ${dtg}` : frames[i];
     },
-    [advisory, frames]
+    [selected, frames]
   );
 
-  // Push the interpolated shapes straight at Leaflet. Routing this through
-  // React state would re-render the whole map subtree 60 times a second.
+  // Push interpolated shapes straight at Leaflet. Routing this through React
+  // state would re-render the whole map subtree 60 times a second.
   const draw = useCallback(
     (t: number) => {
       const seg = Math.min(Math.floor(t), Math.max(0, frames.length - 2));
       const local = t - seg;
-      tracks.forEach((track, i) => {
+      selectedTracks.forEach((track, i) => {
         const layer = layerRefs.current[i];
         const from = track.rings[seg];
         if (!layer || !from) return;
@@ -180,7 +216,7 @@ export default function AshMap({
       }
       if (readout.current) readout.current.textContent = frameLabel(t);
     },
-    [frames.length, tracks, frameLabel]
+    [frames.length, selectedTracks, frameLabel]
   );
 
   useEffect(() => {
@@ -192,15 +228,13 @@ export default function AshMap({
 
     const state = { t: 0 };
     const hops = frames.length - 1;
-    const reduced = prefersReducedMotion();
     const tl = gsap.timeline({
       paused: true,
       defaults: { ease: "none" },
       onUpdate: () => draw(state.t),
       onComplete: () => setPlaying(false),
     });
-    if (reduced) {
-      // One instant step per frame, held long enough to read.
+    if (prefersReducedMotion()) {
       for (let i = 1; i <= hops; i++) tl.set(state, { t: i }, (i - 1) * 1.2);
       tl.to(state, { t: hops, duration: 0.01 }, hops * 1.2);
     } else {
@@ -242,10 +276,15 @@ export default function AshMap({
     tl.progress(frames.length > 1 ? value / (frames.length - 1) : 0);
   };
 
+  const fit = useMemo(() => {
+    const points = advisories.map((a) => a.advisory.position).filter((p): p is LatLon => !!p);
+    return points.length ? points : null;
+  }, [advisories]);
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
-        center={center}
+        center={[-2, 118]}
         zoom={5}
         style={{ height: "100%", width: "100%" }}
         worldCopyJump
@@ -260,64 +299,90 @@ export default function AshMap({
           url={resolvedTheme === "dark" ? BASEMAPS.dark : BASEMAPS.light}
           maxZoom={16}
         />
-        <MapSync lat={advisory?.position?.[0]} lon={advisory?.position?.[1]} onBoundsChange={onBoundsChange} />
+        <MapSync fit={fit} onBoundsChange={onBoundsChange} />
 
-        {tracks.map((track, i) => (
-          <Polygon
-            key={`${advisory?.advisoryNr ?? "none"}-${track.flightLevel}`}
-            ref={(layer) => {
-              layerRefs.current[i] = layer;
-            }}
-            positions={track.rings[0] ?? []}
-            pathOptions={{
-              color: flightLevelColor(track.flightLevel),
-              fillColor: flightLevelColor(track.flightLevel),
-              weight: 2,
-              fillOpacity: 0.35,
-            }}
-          >
-            <Popup>
-              <b>{track.flightLevel}</b>
-              {track.movement && (
-                <>
-                  <br />
-                  {track.movement}
-                </>
-              )}
-            </Popup>
-          </Polygon>
-        ))}
-
-        {advisory?.position && (
-          <Marker
-            position={advisory.position}
-            icon={volcanoIcon()}
-            title={`${advisory.volcano ?? "Volcano"} — advisory details`}
-            alt={`${advisory.volcano ?? "Volcano"} — advisory details`}
-          >
-            <Popup>
-              <div style={{ minWidth: 220 }}>
-                <b>{advisory.volcano}</b> ({advisory.vaac} VAAC)
-                <br />
-                Advisory {advisory.advisoryNr}
-                <br />
-                DTG: {advisory.dtg}
-                {advisory.eruptionDetails && (
+        {layers.map(({ item, tracks }) => {
+          const isSelected = item.id === selected?.id;
+          return tracks.map((track, i) => (
+            <Polygon
+              key={`${item.id}-${track.flightLevel}`}
+              // Only the selected advisory is animated, so only it needs refs.
+              ref={
+                isSelected
+                  ? (layer) => {
+                      layerRefs.current[i] = layer;
+                    }
+                  : undefined
+              }
+              positions={track.rings[0] ?? []}
+              eventHandlers={{ click: () => onSelect(item.id) }}
+              pathOptions={{
+                color: flightLevelColor(track.flightLevel),
+                fillColor: flightLevelColor(track.flightLevel),
+                // Unselected advisories stay as context, not competition.
+                weight: isSelected ? 2 : 1,
+                opacity: isSelected ? 1 : 0.55,
+                fillOpacity: isSelected ? 0.35 : 0.12,
+                dashArray: isSelected ? undefined : "4 3",
+              }}
+            >
+              <Popup>
+                <b>{item.advisory.volcano}</b> — {track.flightLevel}
+                {track.movement && (
                   <>
                     <br />
-                    {advisory.eruptionDetails}
+                    {track.movement}
                   </>
                 )}
-              </div>
-            </Popup>
-          </Marker>
+              </Popup>
+            </Polygon>
+          ));
+        })}
+
+        {advisories.map((item) =>
+          item.advisory.position ? (
+            <Marker
+              key={`marker-${item.id}`}
+              position={item.advisory.position}
+              icon={volcanoIcon(item.id === selected?.id)}
+              title={`${item.advisory.volcano ?? "Volcano"} — advisory details`}
+              alt={`${item.advisory.volcano ?? "Volcano"} — advisory details`}
+              eventHandlers={{ click: () => onSelect(item.id) }}
+            >
+              <Popup>
+                <div style={{ minWidth: 210 }}>
+                  <b>{item.advisory.volcano}</b> ({item.advisory.vaac} VAAC)
+                  <br />
+                  Advisory {item.advisory.advisoryNr} · {item.advisory.dtg}
+                  <br />
+                  {assessAsh(item.advisory).summary}
+                  <br />
+                  <button
+                    type="button"
+                    onClick={() => onSelect(item.id)}
+                    style={{ marginTop: 6, marginRight: 8, textDecoration: "underline", cursor: "pointer" }}
+                  >
+                    Show timeline
+                  </button>
+                  {onExport && (
+                    <button
+                      type="button"
+                      onClick={() => onExport(item)}
+                      style={{ marginTop: 6, textDecoration: "underline", cursor: "pointer" }}
+                    >
+                      GeoJSON
+                    </button>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          ) : null
         )}
 
         {/* The wind field is 64 arrows. Left interactive, Leaflet gives each one a
             tabindex and a role=button named "↑", which buries every real control
             behind ~65 tab stops and fails target size at 18px. It is a data
-            layer, so it is drawn non-interactive; speed is read from the legend
-            (and the sidebar carries the numbers a screen reader needs). */}
+            layer, so it is drawn non-interactive. */}
         {showWind &&
           windVectors.map((v, i) => (
             <Marker key={i} position={[v.lat, v.lon]} icon={windIcon(v)} interactive={false} keyboard={false} />

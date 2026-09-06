@@ -1,11 +1,13 @@
 "use client";
 
 import { useId } from "react";
-import { ChevronDown, FileText, Loader2, MapPin, Rss, Upload, Wind } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, FileText, Layers, Loader2, MapPin, Rss, Upload, Wind } from "lucide-react";
 
 import type { FrameKey, VaaAdvisory } from "@/lib/vaa";
 import { frameDtg } from "@/lib/vaa";
 import { FL_BANDS, WIND_BANDS, WIND_LEVELS } from "@/lib/style";
+import { assessAsh } from "@/lib/eruption";
+import type { PlottedAdvisory } from "@/components/AshMap";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +67,12 @@ export type AdvisoryPanelProps = {
   onWindLevel: (v: string) => void;
   onSelectFeedItem: (item: FeedItem) => void;
   feed: DarwinFeedState;
+  plotted: PlottedAdvisory[];
+  selectedId: string | null;
+  hidden: Set<string>;
+  onToggleLayer: (id: string) => void;
+  minFlightLevel: number;
+  onMinFlightLevel: (fl: number) => void;
 };
 
 export function AdvisoryPanel({
@@ -86,6 +94,12 @@ export function AdvisoryPanel({
   onWindLevel,
   onSelectFeedItem,
   feed,
+  plotted,
+  selectedId,
+  hidden,
+  onToggleLayer,
+  minFlightLevel,
+  onMinFlightLevel,
 }: AdvisoryPanelProps) {
   // This panel is mounted twice — once in the sidebar, once in the slide-over —
   // so fixed ids would collide and every `htmlFor` would resolve to whichever
@@ -241,6 +255,66 @@ export function AdvisoryPanel({
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {plotted.length > 0 && (
+        <Section title="Layers on the map" icon={<Layers className="size-4 text-muted-foreground" aria-hidden="true" />}>
+          <ul className="space-y-1">
+            {plotted.map((item) => {
+              const isHidden = hidden.has(item.id);
+              const ash = assessAsh(item.advisory);
+              return (
+                <li key={item.id} className="flex items-center gap-1">
+                  <button
+                    onClick={() => onSelectFeedItem({ ...item, file: item.id, issued: "", ash })}
+                    aria-current={item.id === selectedId}
+                    className={`flex min-w-0 flex-1 flex-col items-start rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none ${
+                      item.id === selectedId ? "bg-accent font-medium" : ""
+                    }`}
+                  >
+                    <span className="w-full truncate">{item.advisory.volcano ?? "Unknown"}</span>
+                    <span className="w-full truncate font-mono text-muted-foreground">
+                      FL{ash.maxFlightLevel} · {item.frames.length} frame{item.frames.length === 1 ? "" : "s"}
+                    </span>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onToggleLayer(item.id)}
+                    aria-pressed={!isHidden}
+                    aria-label={`${isHidden ? "Show" : "Hide"} ${item.advisory.volcano ?? "this advisory"} on the map`}
+                    className="size-7 shrink-0"
+                  >
+                    {isHidden ? (
+                      <EyeOff className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    ) : (
+                      <Eye className="size-3.5" aria-hidden="true" />
+                    )}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="space-y-2 border-t pt-3">
+            <Label htmlFor={id("min-fl")}>Hide ash below</Label>
+            <Select value={String(minFlightLevel)} onValueChange={(v) => onMinFlightLevel(Number(v))}>
+              <SelectTrigger id={id("min-fl")} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[0, 100, 200, 300, 450].map((fl) => (
+                  <SelectItem key={fl} value={String(fl)}>
+                    {fl === 0 ? "Show all levels" : `FL${fl} and above`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Cruising traffic sits near FL350, so filtering low ash leaves what matters at altitude.
+            </p>
+          </div>
+        </Section>
       )}
 
       {advisory?.raw && (
