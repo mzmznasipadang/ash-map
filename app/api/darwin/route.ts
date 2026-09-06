@@ -13,6 +13,9 @@ import { availableFrames, frameGeoJSON, parseVaaText, type FrameKey } from "@/li
 // in which case this route needs a runtime with plain socket access.
 
 export const dynamic = "force-dynamic";
+// A cold FTP fetch takes about 4s. Serverless platforms default to a 10s
+// function timeout, which leaves no headroom if BOM is slow.
+export const maxDuration = 30;
 
 const CACHE_MS = 5 * 60 * 1000; // BOM issues at most hourly per volcano
 const MAX_LIMIT = 10;

@@ -14,6 +14,9 @@ import { advisoryGeoJSON, availableFrames, parseVaaText } from "@/lib/vaa";
 // Add &download=1 to get it as a file attachment instead.
 
 export const dynamic = "force-dynamic";
+// A cold FTP fetch takes about 4s. Serverless platforms default to a 10s
+// function timeout, which leaves no headroom if BOM is slow.
+export const maxDuration = 30;
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;

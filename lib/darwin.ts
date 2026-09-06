@@ -183,7 +183,18 @@ export async function fetchLiveBulletins(): Promise<FetchedBulletin[]> {
   try {
     await client.access({ host: FTP_HOST, user: "anonymous", password: "anonymous", secure: false });
 
-    const entries = (await client.list(LIVE_DIR)).filter((e) => LIVE_SLOT_RE.test(e.name));
+    // /anon/gen/fwo holds ~5000 products; listing it whole is most of this
+    // request's latency. The server supports a glob in LIST, so ask only for
+    // the Darwin text slots and fall back if a server ever rejects the pattern.
+    let entries = [] as Awaited<ReturnType<typeof client.list>>;
+    for (const path of [`${LIVE_DIR}/IDY41*.txt`, LIVE_DIR]) {
+      try {
+        entries = (await client.list(path)).filter((e) => LIVE_SLOT_RE.test(e.name));
+      } catch {
+        continue;
+      }
+      if (entries.length) break;
+    }
 
     for (const entry of entries) {
       scanned++;
