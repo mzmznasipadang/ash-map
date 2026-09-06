@@ -1,14 +1,35 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { BRAND_NAVY, logoDataUri } from "@/lib/logo";
+import { logoDataUri } from "@/lib/logo";
 
 // Link previews (WhatsApp, Slack, iMessage, Twitter) read og:image. Without one
 // they fall back to whatever icon they can scrape, which is why the preview
 // showed a generic placeholder rather than the app.
-export const alt = "Volcanic Ash & Wind Map — live ICAO volcanic ash advisories plotted by flight level";
+export const alt = "AshMap — monitor volcanic ash in Indonesia";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpengraphImage() {
+// Satori has no bold in its default font, so `fontWeight` alone renders "Ash"
+// and "Map" identically and the wordmark's weight contrast disappears. It also
+// needs TrueType or WOFF — not the WOFF2 that next/font caches — hence the
+// checked-in TTFs.
+const FONT_DIR = join(process.cwd(), "app", "fonts");
+
+async function fonts() {
+  const [regular, bold, mono] = await Promise.all([
+    readFile(join(FONT_DIR, "Geist-Regular.ttf")),
+    readFile(join(FONT_DIR, "Geist-Bold.ttf")),
+    readFile(join(FONT_DIR, "GeistMono-Regular.ttf")),
+  ]);
+  return [
+    { name: "Geist", data: regular, weight: 400 as const, style: "normal" as const },
+    { name: "Geist", data: bold, weight: 700 as const, style: "normal" as const },
+    { name: "Geist Mono", data: mono, weight: 400 as const, style: "normal" as const },
+  ];
+}
+
+export default async function OpengraphImage() {
   return new ImageResponse(
     (
       <div
@@ -16,58 +37,43 @@ export default function OpengraphImage() {
           width: "100%",
           height: "100%",
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          background: BRAND_NAVY,
-          padding: 72,
+          alignItems: "center",
+          gap: 60,
+          paddingLeft: 118,
+          paddingRight: 96,
+          // Navy through to the dark red of an ash column lit from below.
+          backgroundImage:
+            "linear-gradient(180deg, #062a6e 0%, #131a45 34%, #1b1230 52%, #350a05 82%, #250400 100%)",
           color: "#fff",
-          fontFamily: "sans-serif",
+          fontFamily: "Geist",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
-          <img src={logoDataUri()} width={104} height={104} alt="" style={{ borderRadius: 20 }} />
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 62, fontWeight: 700, letterSpacing: -1.5 }}>Volcanic Ash &amp; Wind Map</div>
-            <div style={{ fontSize: 27, color: "#9fb4d8", marginTop: 6 }}>
-              Real ICAO advisories, live wind, animated forecast drift
-            </div>
-          </div>
-        </div>
+        <img src={logoDataUri({ transparent: true, gap: "#160f2c" })} width={300} height={300} alt="" />
 
-        <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-          {[
-            ["#4aa3e8", "≤ FL150"],
-            ["#f5a623", "FL151–300"],
-            ["#e0433d", "FL301–450"],
-            ["#9b30d9", "> FL450"],
-          ].map(([color, label]) => (
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 18 }}>
+            <div style={{ display: "flex", fontSize: 112, lineHeight: 1, letterSpacing: -3.5 }}>
+              <span style={{ fontWeight: 400 }}>Ash</span>
+              <span style={{ fontWeight: 700 }}>Map</span>
+            </div>
             <div
-              key={label}
               style={{
                 display: "flex",
-                alignItems: "center",
-                gap: 12,
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.16)",
-                borderRadius: 999,
-                padding: "12px 22px",
+                fontFamily: "Geist Mono",
                 fontSize: 26,
+                color: "#c2c9db",
+                paddingBottom: 14,
               }}
             >
-              <div style={{ width: 20, height: 20, borderRadius: 6, background: color, display: "flex" }} />
-              {label}
+              v1.0 alpha
             </div>
-          ))}
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", fontSize: 24 }}>
-          <div style={{ color: "#9fb4d8", display: "flex" }}>
-            Darwin VAAC via Bureau of Meteorology · Wind by Open-Meteo
           </div>
-          <div style={{ color: "#dfe8f6", display: "flex" }}>ash-map-blush.vercel.app</div>
+          <div style={{ display: "flex", fontSize: 37, marginTop: 14, color: "#eef1f7" }}>
+            Monitor volcanic ash in Indonesia
+          </div>
         </div>
       </div>
     ),
-    size
+    { ...size, fonts: await fonts() }
   );
 }
