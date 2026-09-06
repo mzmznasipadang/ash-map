@@ -271,6 +271,8 @@ and NOTAMs issued by the responsible VAAC and your national AIS.
 app/
   page.tsx               app shell + state (map, sidebar, slide-over)
   layout.tsx             theme provider
+  icon.svg               favicon (the mark; Next serves it as rel=icon)
+  apple-icon.tsx         the same mark rendered to PNG for iOS
   api/advisory/route.ts  fetch-or-parse a VAA text advisory -> GeoJSON
   api/darwin/route.ts    poll BOM's FTP for the newest Darwin bulletins
   api/darwin/geojson/    one FeatureCollection for GIS, area-filterable
@@ -288,6 +290,7 @@ lib/
   coords.ts              "N1428 W09052" -> [lat, lon]
   vaa.ts                 VAA text parser + GeoJSON builder
   darwin.ts              BOM FTP client + product-file selection
+  logo.ts                the app mark, shared by the generated icons
   area.ts                Indonesia bbox + area matching
   bulletin-cache.ts      immutable-file cache (memory + temp dir)
   eruption.ts            per-band ash status, height and drift

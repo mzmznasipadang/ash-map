@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <rect width="500" height="500" fill="#012060"/>
+  <!-- rear peak -->
+  <path d="M180 212 254 318 98 318Z" fill="#fff" stroke="#fff" stroke-width="28" stroke-linejoin="round"/>
+  <!-- thin navy gap, so the front peak reads as its own mass -->
+  <path d="M295 180 408 318 182 318Z" fill="none" stroke="#012060" stroke-width="34" stroke-linejoin="round"/>
+  <!-- front peak -->
+  <path d="M295 180 408 318 182 318Z" fill="#fff" stroke="#fff" stroke-width="28" stroke-linejoin="round"/>
+  <!-- snow line: a shallow wave across each peak -->
+  <g fill="none" stroke="#012060" stroke-width="15" stroke-linecap="round">
+    <path d="M232 250c14-11 28-11 42 0s28 11 42 0 28-11 42 0"/>
+    <path d="M132 280c11-9 22-9 33 0s22 9 33 0"/>
+  </g>
+</svg>
