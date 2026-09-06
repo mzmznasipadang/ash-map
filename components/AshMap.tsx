@@ -286,7 +286,12 @@ export default function AshMap({
       <MapContainer
         center={[-2, 118]}
         zoom={5}
-        style={{ height: "100%", width: "100%" }}
+        // Leaflet gives its internal panes z-index 200-700, in the ROOT stacking
+        // context. Anything layered over the map with a smaller z-index loses:
+        // the mobile slide-over panel (z-50) had the map's opaque tiles painted
+        // straight over its body, leaving only the header visible. `isolation`
+        // creates a stacking context so those pane z-indexes stay inside the map.
+        style={{ height: "100%", width: "100%", isolation: "isolate" }}
         worldCopyJump
         aria-label="Volcanic ash advisory map"
       >
@@ -295,7 +300,7 @@ export default function AshMap({
             neutral ground for reading ash polygons against. */}
         <TileLayer
           key={resolvedTheme === "dark" ? "dark" : "light"}
-          attribution='Tiles &copy; <a href="https://www.esri.com/">Esri</a>'
+          attribution='Tiles &copy; <a href="https://www.esri.com/">Esri</a> | Advisories &copy; <a href="http://www.bom.gov.au/aviation/volcanic-ash/">Bureau of Meteorology</a> | Wind <a href="https://open-meteo.com/">Open-Meteo</a>'
           url={resolvedTheme === "dark" ? BASEMAPS.dark : BASEMAPS.light}
           maxZoom={16}
         />

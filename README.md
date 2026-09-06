@@ -1,7 +1,9 @@
 # Volcanic Ash & Wind Map
 
-A Next.js + Leaflet prototype that plots **real** Volcanic Ash Advisory (VAA)
-polygons and **live** wind vectors on a map.
+A Next.js + Leaflet application that plots **real** Volcanic Ash Advisory (VAA)
+polygons and **live** wind vectors on a map, with the forecast drift animated.
+
+**Live: https://ash-map-blush.vercel.app**
 
 ## Deploy
 
@@ -244,6 +246,25 @@ Target is WCAG 2.2 AA (see PRODUCT.md). Measured, not assumed:
   tweening, so the feature survives the preference.
 - No horizontal scroll or overflow at 375 / 768 / 1280.
 
+## Credits
+
+Built by **Victor Chandra** ([@mzmznasipadang](https://github.com/mzmznasipadang)).
+Source code MIT licensed; see [LICENSE](LICENSE).
+
+The data is not mine and carries its publishers' terms:
+
+| Data | Holder |
+|---|---|
+| Darwin VAAC advisories | © Commonwealth of Australia, [Bureau of Meteorology](http://www.bom.gov.au/aviation/volcanic-ash/) |
+| Washington VAAC advisories | [NOAA / NWS Satellite Analysis Branch](https://www.ospo.noaa.gov/products/atmosphere/vaac/) |
+| Wind forecast | © [Open-Meteo](https://open-meteo.com/), CC BY 4.0 |
+| Basemap tiles | © [Esri](https://www.esri.com/) and its data contributors |
+
+Built with Next.js, Leaflet, GSAP, shadcn/ui and Tailwind.
+
+**Not an official aviation product.** For flight planning, use the advisories
+and NOTAMs issued by the responsible VAAC and your national AIS.
+
 ## Project structure
 
 ```
@@ -259,6 +280,7 @@ components/
   advisory-panel.tsx     sidebar sections, advisory card, legend
   darwin-feed.tsx        the FTP feed poller + its list view
   raw-bulletin.tsx       the bulletin as issued, with copy
+  credits.tsx            author and data-source attribution
   theme-provider.tsx     next-themes wiring
   theme-toggle.tsx       light/dark button
   ui/                    shadcn/ui components

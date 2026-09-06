@@ -35,5 +35,12 @@
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "author": "Victor Chandra (https://github.com/mzmznasipadang)",
+  "description": "Live volcanic ash advisory map: real ICAO VAA polygons, live wind, animated forecast drift, GIS export.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mzmznasipadang/ash-map.git"
   }
 }

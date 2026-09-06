@@ -243,7 +243,10 @@ export default function Home() {
               <PanelLeft className="size-4" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[min(22rem,90vw)] p-0">
+          {/* The width needs the same data-variant prefix as shadcn's own
+              `data-[side=left]:w-3/4`, or that wins on specificity and the
+              panel is stuck at 75% of a narrow screen. */}
+          <SheetContent side="left" className="data-[side=left]:w-[min(22rem,88vw)] p-0">
             <SheetHeader className="border-b px-4">
               <SheetTitle>Advisory</SheetTitle>
             </SheetHeader>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { ChevronDown, Eye, EyeOff, FileText, Layers, Loader2, MapPin, Rss, Upload, Wind } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, FileText, Info, Layers, Loader2, MapPin, Rss, Upload, Wind } from "lucide-react";
 
 import type { FrameKey, VaaAdvisory } from "@/lib/vaa";
 import { frameDtg } from "@/lib/vaa";
@@ -20,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { DarwinFeed, type DarwinFeedState, type FeedItem } from "@/components/darwin-feed";
 import { RawBulletin } from "@/components/raw-bulletin";
+import { Credits } from "@/components/credits";
 
 function Section({
   title,
@@ -350,6 +351,14 @@ export function AdvisoryPanel({
             </SelectContent>
           </Select>
         </div>
+      </Section>
+
+      <Section
+        title="About &amp; sources"
+        defaultOpen={false}
+        icon={<Info className="size-4 text-muted-foreground" aria-hidden="true" />}
+      >
+        <Credits />
       </Section>
 
       <Section title="Legend" icon={<span aria-hidden="true" className="size-4 rounded-sm bg-gradient-to-br from-sky-400 to-purple-600" />}>
