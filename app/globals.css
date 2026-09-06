@@ -182,3 +182,13 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Radix wraps ScrollArea content in a `display: table` div, which sizes to its
+   widest child rather than to the container. One long line in the raw bulletin
+   therefore stretched the whole sidebar's content past the sidebar and clipped
+   it, and the <pre>'s own overflow-x never engaged because nothing constrained
+   it. Blocking the wrapper puts the constraint back. */
+[data-radix-scroll-area-viewport] > div {
+  display: block !important;
+  min-width: 0 !important;
+}
