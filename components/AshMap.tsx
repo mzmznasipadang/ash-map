@@ -300,7 +300,7 @@ export default function AshMap({
             neutral ground for reading ash polygons against. */}
         <TileLayer
           key={resolvedTheme === "dark" ? "dark" : "light"}
-          attribution='Tiles &copy; <a href="https://www.esri.com/">Esri</a> | Advisories &copy; <a href="http://www.bom.gov.au/aviation/volcanic-ash/">Bureau of Meteorology</a> | Wind <a href="https://open-meteo.com/">Open-Meteo</a>'
+          attribution='Built by <a href="https://github.com/mzmznasipadang">Victor Chandra</a> | Tiles &copy; <a href="https://www.esri.com/">Esri</a> | Advisories &copy; <a href="http://www.bom.gov.au/aviation/volcanic-ash/">Bureau of Meteorology</a> | Wind <a href="https://open-meteo.com/">Open-Meteo</a>'
           url={resolvedTheme === "dark" ? BASEMAPS.dark : BASEMAPS.light}
           maxZoom={16}
         />
@@ -394,8 +394,11 @@ export default function AshMap({
           ))}
       </MapContainer>
 
+      {/* z-10, not z-400. The map is its own stacking context now, so the
+          transport only has to sit above the map — anything higher paints over
+          the slide-over panel, which is exactly what z-400 was doing. */}
       {canAnimate && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[400] p-3 sm:p-4">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3 sm:p-4">
           <div className="pointer-events-auto mx-auto flex max-w-2xl items-center gap-3 rounded-xl border bg-background/85 p-2 shadow-lg backdrop-blur-md">
             <Button size="icon" onClick={toggle} aria-label={playing ? "Pause" : "Play"}>
               {playing ? <Pause className="size-4" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}

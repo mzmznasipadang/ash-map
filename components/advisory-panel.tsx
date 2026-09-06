@@ -391,6 +391,24 @@ export function AdvisoryPanel({
           </div>
         </div>
       </Section>
+
+      <div className="flex items-baseline justify-between gap-2 pt-4 text-xs">
+        <p className="text-muted-foreground">
+          Built by{" "}
+          <a
+            href="https://github.com/mzmznasipadang"
+            className="rounded-sm font-medium text-foreground underline underline-offset-2 hover:opacity-80 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            Victor Chandra
+          </a>
+        </p>
+        <a
+          href="https://github.com/mzmznasipadang/ash-map"
+          className="rounded-sm shrink-0 text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
+          Source
+        </a>
+      </div>
     </div>
   );
 }
