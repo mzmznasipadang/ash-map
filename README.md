@@ -151,7 +151,25 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
    Longitudes are normalized before the upstream call — Leaflet reports
    out-of-range bounds past the antimeridian, which Open-Meteo rejects.
 
-8. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
+8. **Times you can actually read** — advisories are timed in Zulu (UTC), which
+   assumes the reader both knows that and can convert it. A "Times & time zone"
+   section explains it and switches every timestamp to the reader's own zone;
+   hovering a time always shows the other. Zulu stays the default, because it
+   is what the bulletin says.
+
+   The short DTG used by every cloud frame (`06/1240Z`) carries a day but no
+   month, so `lib/dtg.ts` resolves it against the advisory's own issue time and
+   picks the month that lands nearest. A +18HR forecast issued on the 31st
+   otherwise resolves into the wrong month, and `Date.UTC` would report the
+   rollover as a real date instead of an invalid one.
+
+9. **Playback and refresh rates** — the transport plays at 1x to 12x (GSAP
+   `timeScale`, applied mid-playback). Auto-refresh is selectable: off, 15 min,
+   30 min or 1 hour, defaulting to 30, since Darwin re-advises a volcano at
+   most hourly. A tab that sat hidden past the interval refreshes when it comes
+   back, and there is a manual Refresh button.
+
+10. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
    detail card, and a legend; a slide-over panel below `lg`; light/dark theme
    with a toggle in the header.
 
@@ -208,9 +226,9 @@ flight-level bands.
 
 ## What was verified
 
-- `npm test` — 22 checks over the VAA parser, the morph math, the wind grid,
-  and the Darwin feed's file selection, on `node:test` + `node:assert` with no
-  test framework.
+- `npm test` — 47 checks over the VAA parser, the morph math, the wind grid,
+  the Darwin feed's file selection, and DTG parsing across month and year
+  boundaries, on `node:test` + `node:assert` with no test framework.
 - `npm run build` and `tsc --noEmit` complete cleanly; `eslint .` is clean.
 - The parser was run against two real advisory texts: a live Washington VAAC
   (Fuego) advisory and the Krakatau/Darwin advisory from the reference chart.
@@ -273,6 +291,7 @@ app/
   layout.tsx             theme provider
   icon.svg               favicon (the mark; Next serves it as rel=icon)
   apple-icon.tsx         the same mark rendered to PNG for iOS
+  opengraph-image.tsx    1200x630 link-preview card
   api/advisory/route.ts  fetch-or-parse a VAA text advisory -> GeoJSON
   api/darwin/route.ts    poll BOM's FTP for the newest Darwin bulletins
   api/darwin/geojson/    one FeatureCollection for GIS, area-filterable
@@ -283,6 +302,7 @@ components/
   darwin-feed.tsx        the FTP feed poller + its list view
   raw-bulletin.tsx       the bulletin as issued, with copy
   credits.tsx            author and data-source attribution
+  time-mode.tsx          Zulu/local preference, explainer, <Dtg>
   theme-provider.tsx     next-themes wiring
   theme-toggle.tsx       light/dark button
   ui/                    shadcn/ui components
@@ -294,6 +314,7 @@ lib/
   area.ts                Indonesia bbox + area matching
   bulletin-cache.ts      immutable-file cache (memory + temp dir)
   eruption.ts            per-band ash status, height and drift
+  dtg.ts                 ICAO date-time groups, Zulu/local formatting
   morph.ts               ring resampling / alignment / interpolation
   grid.ts                wind sampling grid, longitude normalization
   style.ts               flight-level / wind-speed color scales
