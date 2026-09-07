@@ -28,7 +28,7 @@ type NotamState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "unconfigured"; message: string }
-  | { status: "error"; message: string }
+  | { status: "error"; message: string; hint?: string }
   | { status: "ok"; count: number; ashRelated: number; notams: { id: string; text: string; ashRelated: boolean }[] };
 
 function NotamPanel({ icao }: { icao: string }) {
@@ -42,7 +42,7 @@ function NotamPanel({ icao }: { icao: string }) {
       if (data.configured === false) {
         setState({ status: "unconfigured", message: data.message });
       } else if (!res.ok) {
-        setState({ status: "error", message: data.error ?? `Lookup failed (${res.status})` });
+        setState({ status: "error", message: data.error ?? `Lookup failed (${res.status})`, hint: data.hint });
       } else {
         setState({ status: "ok", count: data.count, ashRelated: data.ashRelated, notams: data.notams ?? [] });
       }
@@ -75,9 +75,13 @@ function NotamPanel({ icao }: { icao: string }) {
 
   if (state.status === "error") {
     return (
-      <p className="text-xs text-destructive" role="alert">
-        {state.message}
-      </p>
+      <div className="space-y-1.5" role="alert">
+        <p className="text-xs text-destructive">{state.message}</p>
+        {state.hint && <p className="text-xs leading-relaxed text-muted-foreground">{state.hint}</p>}
+        <Button variant="ghost" size="sm" onClick={load} className="h-6 text-xs">
+          Retry
+        </Button>
+      </div>
     );
   }
 

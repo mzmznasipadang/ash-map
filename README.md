@@ -25,7 +25,13 @@ On Vercel, add it under Settings → Environment Variables, or:
 vercel env add SKYLINK_API_KEY
 ```
 
-Without it, `/api/notams/<icao>` reports itself unconfigured and the airport
+A RapidAPI key alone is not enough: RapidAPI gates each API separately, so the
+account must also be **subscribed** to the SkyLink NOTAM API's free Basic plan.
+An unsubscribed key returns `403 {"message":"You are not subscribed to this
+API."}`, which the route passes through with a hint rather than reporting a
+generic failure.
+
+Without a key, `/api/notams/<icao>` reports itself unconfigured and the airport
 panel says so; everything else works unchanged. The key is read server-side
 only and never reaches the browser. The free tier is 1,000 requests a month, so
 responses are cached per ICAO for 10 minutes.

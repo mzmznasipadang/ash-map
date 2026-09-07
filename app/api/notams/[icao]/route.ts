@@ -57,10 +57,33 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ icao: strin
     });
 
     if (!res.ok) {
-      // Surface the upstream status: 401 means a bad key, 429 means the monthly
-      // quota is spent, and those need different responses from the reader.
+      // The provider's own message is the useful part. A bare "returned 403"
+      // sends the reader looking for a bug in this app, when what RapidAPI
+      // actually means is that the account holds a valid key but has not
+      // subscribed to this particular API — a different fix entirely.
+      const providerMessage = await res
+        .clone()
+        .json()
+        .then((b) => (b as { message?: string })?.message)
+        .catch(() => undefined);
+
+      const hint =
+        res.status === 403
+          ? "The key is valid but the RapidAPI account is not subscribed to the SkyLink NOTAM API. Subscribe to its free Basic plan, then retry — a RapidAPI key alone does not grant access to an individual API."
+          : res.status === 401
+            ? "SKYLINK_API_KEY was rejected. Check it against the key on the RapidAPI dashboard."
+            : res.status === 429
+              ? "The monthly request quota is spent. It resets on the plan's renewal date."
+              : undefined;
+
       return NextResponse.json(
-        { configured: true, error: `NOTAM provider returned ${res.status}`, icao },
+        {
+          configured: true,
+          icao,
+          error: providerMessage ?? `NOTAM provider returned ${res.status}`,
+          status: res.status,
+          hint,
+        },
         { status: res.status === 429 ? 429 : 502 }
       );
     }
