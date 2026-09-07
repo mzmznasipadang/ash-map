@@ -8,9 +8,20 @@ polygons and **live** wind vectors on a map, with the forecast drift animated.
 ## Deploy
 
 **Vercel** (what this is set up for): import the repo at
-[vercel.com/new](https://vercel.com/new). Next.js is detected automatically,
-there is nothing to configure, and no environment variables exist to set — the
-app uses no API keys.
+[vercel.com/new](https://vercel.com/new). Next.js is detected automatically and
+there is nothing required to configure — every data source the app depends on
+is keyless.
+
+One **optional** variable enables the NOTAM lookup:
+
+```
+SKYLINK_API_KEY=<RapidAPI key for the SkyLink NOTAM API>
+```
+
+Without it, `/api/notams/<icao>` reports itself unconfigured and the airport
+panel says so; everything else works unchanged. The key is read server-side
+only and never reaches the browser. The free tier is 1,000 requests a month, so
+responses are cached per ICAO for 10 minutes.
 
 Two things to know about running the FTP route on serverless:
 
@@ -130,7 +141,8 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
    deduplicated to the newest per volcano (`?group=0` for the full history).
 
    *Deployment note*: this opens an outbound FTP connection. Fine on a server
-   or container; many serverless platforms block non-HTTP egress.
+   or container; many serverless platforms block non-HTTP egress. Verified
+   working on Vercel.
 
 5. **Every volcano at once** — the feed plots the newest advisory for *every*
    volcano currently under advisory, not one. The map fits the view to all of
@@ -151,7 +163,35 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
    Longitudes are normalized before the upstream call — Leaflet reports
    out-of-range bounds past the antimeridian, which Open-Meteo rejects.
 
-8. **Times you can actually read** — advisories are timed in Zulu (UTC), which
+8. **Airports under ash** — the map shows where ash is; this shows what it
+   hits. Every airport in and around Indonesia is tested against every frame's
+   polygons, and the panel lists them worst-first: affected now before
+   forecast, ash reaching the surface before ash only at altitude, then by
+   height. Affected airports are ringed on the map, filled when affected now.
+
+   The distinction that matters is `SFC/FL150` versus `FL150/FL500`: the first
+   is ash on the runway and in the approach, the second is clear air below and
+   a problem at cruise. The band's own flight levels carry it, so they are
+   reported rather than flattened into one verdict.
+
+   Two things it is not. It is not a forecast of its own — it is geometry over
+   published polygons. And it is not an operational clearance: whether an
+   aerodrome is restricted is decided by its authority and published as a NOTAM
+   or ASHTAM. `/api/notams/<icao>` reads those, via the SkyLink NOTAM API
+   (FAA SWIM FNS), when `SKYLINK_API_KEY` is set — see Deploy. Without a key
+   the lookup reports itself unconfigured and nothing else changes.
+
+   Airport coordinates come from [OurAirports](https://ourairports.com/data/)
+   (public domain), filtered to scheduled-service airports.
+
+   A note on the boundary: ray casting answers points exactly on a polygon edge
+   arbitrarily, depending on which edge the ray clips. For a hazard overlay that
+   is not acceptable, so `lib/impact.ts` tests edges explicitly and treats the
+   boundary as inclusive — an aerodrome on the rim of a cloud is reported as
+   affected. Rings crossing the antimeridian are shifted before testing, or a
+   Pacific cloud would flag airports in Indonesia.
+
+9. **Times you can actually read** — advisories are timed in Zulu (UTC), which
    assumes the reader both knows that and can convert it. A "Times & time zone"
    section explains it and switches every timestamp to the reader's own zone;
    hovering a time always shows the other. Zulu stays the default, because it
@@ -163,13 +203,13 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
    otherwise resolves into the wrong month, and `Date.UTC` would report the
    rollover as a real date instead of an invalid one.
 
-9. **Playback and refresh rates** — the transport plays at 1x to 12x (GSAP
+10. **Playback and refresh rates** — the transport plays at 1x to 12x (GSAP
    `timeScale`, applied mid-playback). Auto-refresh is selectable: off, 15 min,
    30 min or 1 hour, defaulting to 30, since Darwin re-advises a volcano at
    most hourly. A tab that sat hidden past the interval refreshes when it comes
    back, and there is a manual Refresh button.
 
-10. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
+11. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
    detail card, and a legend; a slide-over panel below `lg`; light/dark theme
    with a toggle in the header.
 
@@ -226,7 +266,7 @@ flight-level bands.
 
 ## What was verified
 
-- `npm test` — 47 checks over the VAA parser, the morph math, the wind grid,
+- `npm test` — 56 checks over the VAA parser, the morph math, the wind grid,
   the Darwin feed's file selection, and DTG parsing across month and year
   boundaries, on `node:test` + `node:assert` with no test framework.
 - `npm run build` and `tsc --noEmit` complete cleanly; `eslint .` is clean.
@@ -295,6 +335,7 @@ app/
   api/advisory/route.ts  fetch-or-parse a VAA text advisory -> GeoJSON
   api/darwin/route.ts    poll BOM's FTP for the newest Darwin bulletins
   api/darwin/geojson/    one FeatureCollection for GIS, area-filterable
+  api/notams/[icao]/     published NOTAMs for an aerodrome (needs a key)
   api/wind/route.ts      wind vector grid from Open-Meteo
 components/
   AshMap.tsx             Leaflet map, GSAP timeline, transport bar
@@ -303,13 +344,17 @@ components/
   raw-bulletin.tsx       the bulletin as issued, with copy
   credits.tsx            author and data-source attribution
   time-mode.tsx          Zulu/local preference, explainer, <Dtg>
+  airport-impact.tsx     affected-airport list + NOTAM lookup
+  wind-layer.tsx         the wind field as one SVG layer
   theme-provider.tsx     next-themes wiring
   theme-toggle.tsx       light/dark button
   ui/                    shadcn/ui components
 lib/
   coords.ts              "N1428 W09052" -> [lat, lon]
   vaa.ts                 VAA text parser + GeoJSON builder
+  airports.ts            airports in/around Indonesia (from OurAirports)
   darwin.ts              BOM FTP client + product-file selection
+  impact.ts              which airports sit under a cloud, and how high
   logo.ts                the app mark, shared by the generated icons
   area.ts                Indonesia bbox + area matching
   bulletin-cache.ts      immutable-file cache (memory + temp dir)

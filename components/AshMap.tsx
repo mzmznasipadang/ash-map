@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, Polygon, Marker, Popup, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Polygon, Marker, Popup, CircleMarker, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import gsap from "gsap";
 import { useTheme } from "next-themes";
@@ -11,7 +11,9 @@ import { frameDtg, framePolygons, type FrameKey, type VaaAdvisory } from "@/lib/
 import { buildTrack, lerpRing, MORPH_VERTICES } from "@/lib/morph";
 import { assessAsh } from "@/lib/eruption";
 import type { LatLon } from "@/lib/coords";
-import { flightLevelCeiling, flightLevelColor, windColor } from "@/lib/style";
+import { flightLevelCeiling, flightLevelColor } from "@/lib/style";
+import type { AirportImpact } from "@/lib/impact";
+import { WindLayer } from "@/components/wind-layer";
 import type { WindVector } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,17 +51,6 @@ function volcanoIcon(selected: boolean) {
     }px;line-height:1;filter:drop-shadow(0 0 2px #000)${selected ? "" : ";opacity:.75"}">🌋</div>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
-  });
-}
-
-function windIcon(vec: WindVector) {
-  const toDir = (vec.directionDeg + 180) % 360; // "from" -> "to"
-  const color = windColor(vec.speedKmh);
-  return L.divIcon({
-    className: "",
-    html: `<div aria-hidden="true" style="transform:rotate(${toDir}deg);color:${color};font-size:18px;line-height:1">&#8593;</div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
   });
 }
 
@@ -138,6 +129,7 @@ export default function AshMap({
   selectedId,
   onSelect,
   minFlightLevel = 0,
+  impacts = [],
   windVectors,
   showWind,
   onBoundsChange,
@@ -147,6 +139,8 @@ export default function AshMap({
   selectedId: string | null;
   onSelect: (id: string) => void;
   minFlightLevel?: number;
+  /** Airports under ash, marked so the impact list and map agree. */
+  impacts?: AirportImpact[];
   windVectors: WindVector[];
   showWind: boolean;
   onBoundsChange: (b: Bounds) => void;
@@ -363,6 +357,29 @@ export default function AshMap({
           ));
         })}
 
+        {impacts.map(({ airport, now, anySurface, maxCeiling }) => (
+          <CircleMarker
+            key={`ap-${airport.icao}`}
+            center={[airport.lat, airport.lon]}
+            radius={airport.major ? 6 : 4.5}
+            pathOptions={{
+              // Ash on the ground is the operational emergency; ash only aloft
+              // is a routing problem. The ring says which.
+              color: anySurface ? "#e0433d" : "#f5a623",
+              weight: 2,
+              fillColor: now ? (anySurface ? "#e0433d" : "#f5a623") : "transparent",
+              fillOpacity: now ? 0.85 : 0,
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -6]}>
+              <b>{airport.iata}</b> {airport.name}
+              <br />
+              {now ? "Ash now" : "Ash forecast"} · {anySurface ? "surface upward" : "altitude only"} · FL
+              {maxCeiling}
+            </Tooltip>
+          </CircleMarker>
+        ))}
+
         {advisories.map((item) =>
           item.advisory.position ? (
             <Marker
@@ -403,14 +420,12 @@ export default function AshMap({
           ) : null
         )}
 
-        {/* The wind field is 64 arrows. Left interactive, Leaflet gives each one a
-            tabindex and a role=button named "↑", which buries every real control
-            behind ~65 tab stops and fails target size at 18px. It is a data
-            layer, so it is drawn non-interactive. */}
-        {showWind &&
-          windVectors.map((v, i) => (
-            <Marker key={i} position={[v.lat, v.lon]} icon={windIcon(v)} interactive={false} keyboard={false} />
-          ))}
+        {/* One SVG layer, not a marker per vector: 64 markers were 64 DOM nodes
+            Leaflet repositioned on every pan, each a rotated glyph that could
+            not be tapered or scaled. Non-interactive and aria-hidden, since
+            left focusable Leaflet gives each one a tabindex and a role=button
+            named "↑", burying every real control behind ~65 tab stops. */}
+        <WindLayer vectors={windVectors} visible={showWind} />
       </MapContainer>
 
       {/* z-10, not z-400. The map is its own stacking context now, so the

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Mountain, PanelLeft } from "lucide-react";
 
 import type { FrameKey, VaaAdvisory } from "@/lib/vaa";
@@ -11,6 +11,7 @@ import { AdvisoryPanel } from "@/components/advisory-panel";
 import { useDarwinFeed, type FeedItem } from "@/components/darwin-feed";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TimeModeProvider } from "@/components/time-mode";
+import { assessAcross } from "@/lib/impact";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -72,6 +73,10 @@ export default function Home() {
   const advisory = selected?.advisory ?? null;
   const frames = selected?.frames ?? [];
   const visible = plotted.filter((p) => !hidden.has(p.id));
+
+  // Computed from what is actually on the map, so the list and the markers
+  // can never disagree about which airports are affected.
+  const impacts = useMemo(() => assessAcross(visible.map((p) => p.advisory)), [visible]);
 
   // The feed hands over every advisory at once, so the map opens showing every
   // volcano currently under advisory rather than one.
@@ -232,6 +237,7 @@ export default function Home() {
       }
       minFlightLevel={minFlightLevel}
       onMinFlightLevel={setMinFlightLevel}
+      impacts={impacts}
     />
   );
 
@@ -277,6 +283,7 @@ export default function Home() {
             selectedId={selected?.id ?? null}
             onSelect={setSelectedId}
             minFlightLevel={minFlightLevel}
+            impacts={impacts}
             windVectors={windVectors}
             showWind={showWind}
             onBoundsChange={handleBounds}

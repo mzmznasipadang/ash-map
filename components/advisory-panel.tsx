@@ -22,6 +22,8 @@ import { DarwinFeed, type DarwinFeedState, type FeedItem } from "@/components/da
 import { RawBulletin } from "@/components/raw-bulletin";
 import { Credits } from "@/components/credits";
 import { Dtg, TimeModeIcon, TimeModeToggle } from "@/components/time-mode";
+import { AirportImpactIcon, AirportImpactList } from "@/components/airport-impact";
+import type { AirportImpact } from "@/lib/impact";
 
 function Section({
   title,
@@ -75,6 +77,7 @@ export type AdvisoryPanelProps = {
   onToggleLayer: (id: string) => void;
   minFlightLevel: number;
   onMinFlightLevel: (fl: number) => void;
+  impacts: (AirportImpact & { volcanoes?: string[] })[];
 };
 
 export function AdvisoryPanel({
@@ -102,6 +105,7 @@ export function AdvisoryPanel({
   onToggleLayer,
   minFlightLevel,
   onMinFlightLevel,
+  impacts,
 }: AdvisoryPanelProps) {
   // This panel is mounted twice — once in the sidebar, once in the slide-over —
   // so fixed ids would collide and every `htmlFor` would resolve to whichever
@@ -267,6 +271,12 @@ export function AdvisoryPanel({
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {plotted.length > 0 && (
+        <Section title="Airports under ash" icon={<AirportImpactIcon />}>
+          <AirportImpactList impacts={impacts} />
+        </Section>
       )}
 
       {plotted.length > 0 && (
