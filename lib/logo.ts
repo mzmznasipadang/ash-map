@@ -14,26 +14,15 @@ export const LOGO_PATHS = `
   </g>
 `;
 
-/**
- * Full square mark. `inset` shrinks the artwork (iOS crops icon corners).
- * `transparent` drops the navy plate, for placing the mark on another
- * background — the gap between the two peaks is cut in the background colour,
- * so it has to be redrawn in whatever sits behind.
- */
-export function logoSvg({
-  inset = 0,
-  transparent = false,
-  gap = BRAND_NAVY,
-}: { inset?: number; transparent?: boolean; gap?: string } = {}): string {
+/** Full square mark. `inset` shrinks the artwork, since iOS crops icon corners. */
+export function logoSvg({ inset = 0 }: { inset?: number } = {}): string {
   const scale = (500 - inset * 2) / 500;
-  const plate = transparent ? "" : `<rect width="500" height="500" fill="${BRAND_NAVY}"/>`;
-  const art = gap === BRAND_NAVY ? LOGO_PATHS : LOGO_PATHS.replaceAll(BRAND_NAVY, gap);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
-  ${plate}
-  <g transform="translate(${inset} ${inset}) scale(${scale})">${art}</g>
+  <rect width="500" height="500" fill="${BRAND_NAVY}"/>
+  <g transform="translate(${inset} ${inset}) scale(${scale})">${LOGO_PATHS}</g>
 </svg>`;
 }
 
-export function logoDataUri(opts?: { inset?: number; transparent?: boolean; gap?: string }): string {
+export function logoDataUri(opts?: { inset?: number }): string {
   return `data:image/svg+xml;base64,${Buffer.from(logoSvg(opts)).toString("base64")}`;
 }

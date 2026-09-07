@@ -12,10 +12,17 @@ polygons and **live** wind vectors on a map, with the forecast drift animated.
 there is nothing required to configure — every data source the app depends on
 is keyless.
 
-One **optional** variable enables the NOTAM lookup:
+One **optional** variable enables the NOTAM lookup. See
+[.env.example](.env.example); locally:
 
+```bash
+cp .env.example .env.local   # then paste the key into SKYLINK_API_KEY
 ```
-SKYLINK_API_KEY=<RapidAPI key for the SkyLink NOTAM API>
+
+On Vercel, add it under Settings → Environment Variables, or:
+
+```bash
+vercel env add SKYLINK_API_KEY
 ```
 
 Without it, `/api/notams/<icao>` reports itself unconfigured and the airport
@@ -331,7 +338,7 @@ app/
   layout.tsx             theme provider
   icon.svg               favicon (the mark; Next serves it as rel=icon)
   apple-icon.tsx         the same mark rendered to PNG for iOS
-  opengraph-image.tsx    1200x630 link-preview card
+  opengraph-image.png    1200x630 link-preview card
   api/advisory/route.ts  fetch-or-parse a VAA text advisory -> GeoJSON
   api/darwin/route.ts    poll BOM's FTP for the newest Darwin bulletins
   api/darwin/geojson/    one FeatureCollection for GIS, area-filterable
