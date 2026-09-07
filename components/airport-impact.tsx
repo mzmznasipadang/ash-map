@@ -8,6 +8,7 @@ import type { FrameKey } from "@/lib/vaa";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { relativeToNow } from "@/lib/dtg";
 
 type Impact = AirportImpact & { volcanoes?: string[] };
 
@@ -154,7 +155,9 @@ function NotamPanel({ icao }: { icao: string }) {
               <p className="font-mono text-[10px] text-muted-foreground">
                 {new Date(n.effective).toISOString().slice(0, 16).replace("T", " ")}Z &rarr;{" "}
                 {n.expiration
-                  ? `${new Date(n.expiration).toISOString().slice(0, 16).replace("T", " ")}Z`
+                  ? `${new Date(n.expiration).toISOString().slice(0, 16).replace("T", " ")}Z (ends ${relativeToNow(
+                      new Date(n.expiration)
+                    )})`
                   : "until further notice"}
               </p>
             )}

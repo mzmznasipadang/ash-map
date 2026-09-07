@@ -82,7 +82,7 @@ export default function Home() {
   // published closure is a decision by the aerodrome's authority, which the
   // geometry cannot know, so it outranks the polygon on the map.
   const [closures, setClosures] = useState<
-    Record<string, { closure: boolean; ash: boolean; reason: string | null }>
+    Record<string, { closure: boolean; ash: boolean; reason: string | null; expiration: string | null }>
   >({});
   const closureKey = impacts.map((i) => i.airport.icao).join(",");
 

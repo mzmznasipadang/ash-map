@@ -24,17 +24,28 @@ export async function GET(req: NextRequest) {
   if (!process.env.SKYLINK_API_KEY) return NextResponse.json({ closed: {}, configured: false });
 
   const origin = req.nextUrl.origin;
-  const closed: Record<string, { closure: boolean; ash: boolean; reason: string | null }> = {};
+  const closed: Record<
+    string,
+    { closure: boolean; ash: boolean; reason: string | null; expiration: string | null }
+  > = {};
 
   for (const icao of codes) {
     try {
       const res = await fetch(`${origin}/api/notams/${icao}`, { cache: "no-store" });
       if (!res.ok) continue;
       const data = (await res.json()) as {
-        notams?: { body: string; closure: boolean; ashRelated: boolean }[];
+        notams?: { body: string; closure: boolean; ashRelated: boolean; expiration: string | null }[];
       };
       const hit = data.notams?.find((n) => n.closure);
-      if (hit) closed[icao] = { closure: true, ash: hit.ashRelated, reason: hit.body || null };
+      if (hit) {
+        closed[icao] = {
+          closure: true,
+          ash: hit.ashRelated,
+          reason: hit.body || null,
+          // null means the NOTAM carries no end time: until further notice.
+          expiration: hit.expiration ?? null,
+        };
+      }
     } catch {
       // A missing flag just means the pin stays unmarked.
     }

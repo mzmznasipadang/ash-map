@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, Polygon, Marker, Popup, CircleMarker, Tooltip, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Polygon, Marker, Popup, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import gsap from "gsap";
 import { useTheme } from "next-themes";
@@ -18,7 +18,14 @@ import type { WindVector } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTimeMode } from "@/components/time-mode";
-import { formatDtg, parseDtg } from "@/lib/dtg";
+import { formatDtg, parseDtg, relativeToNow } from "@/lib/dtg";
+
+/** An ISO instant as a full DTG, so formatDtg can render it in either mode. */
+function toFullDtg(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}/${p(d.getUTCHours())}${p(d.getUTCMinutes())}Z`;
+}
 
 type Bounds = { north: number; south: number; east: number; west: number };
 
@@ -56,6 +63,23 @@ function volcanoIcon(selected: boolean) {
     }px;line-height:1;filter:drop-shadow(0 0 2px #000)${selected ? "" : ";opacity:.75"}">🌋</div>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
+  });
+}
+
+/** A pin carrying the airport's code, so the map is readable without hovering. */
+function airportIcon(iata: string, shut: boolean, anySurface: boolean, now: boolean) {
+  const color = shut || anySurface ? "#e0433d" : "#f5a623";
+  const solid = shut || now;
+  return L.divIcon({
+    className: "",
+    html: `<div aria-hidden="true" style="display:flex;flex-direction:column;align-items:center;line-height:1">
+      <span style="font:600 10px/1.4 var(--font-sans,system-ui);letter-spacing:.02em;padding:1px 5px;border-radius:5px;white-space:nowrap;
+        border:1.5px solid ${color};background:${solid ? color : "rgba(20,20,24,.72)"};color:${solid ? "#fff" : color}">${iata}</span>
+      <span style="width:1.5px;height:6px;background:${color}"></span>
+      <span style="width:5px;height:5px;border-radius:50%;background:${color}"></span>
+    </div>`,
+    iconSize: [46, 28],
+    iconAnchor: [23, 28],
   });
 }
 
@@ -152,7 +176,7 @@ export default function AshMap({
   /** Airports under ash, marked so the impact list and map agree. */
   impacts?: AirportImpact[];
   /** ICAO -> closure notice, for pins whose aerodrome is actually shut. */
-  closures?: Record<string, { closure: boolean; ash: boolean; reason: string | null }>;
+  closures?: Record<string, { closure: boolean; ash: boolean; reason: string | null; expiration: string | null }>;
   windVectors: WindVector[];
   showWind: boolean;
   onBoundsChange: (b: Bounds) => void;
@@ -372,21 +396,16 @@ export default function AshMap({
         {impacts.map(({ airport, now, anySurface, maxCeiling }) => {
           const shut = closures[airport.icao];
           return (
-            <CircleMarker
+            <Marker
               key={`ap-${airport.icao}`}
               pane={AIRPORT_PANE}
-              center={[airport.lat, airport.lon]}
-              radius={shut ? (airport.major ? 8 : 6.5) : airport.major ? 6 : 4.5}
-              pathOptions={{
-                // Ash on the ground is the operational emergency; ash only
-                // aloft is a routing problem. A published closure outranks
-                // both, because that one is a decision rather than geometry.
-                color: shut ? "#e0433d" : anySurface ? "#e0433d" : "#f5a623",
-                weight: shut ? 3 : 2,
-                fillColor: shut || now ? (anySurface || shut ? "#e0433d" : "#f5a623") : "transparent",
-                fillOpacity: shut ? 1 : now ? 0.85 : 0,
-                dashArray: shut ? undefined : now ? undefined : "3 2",
-              }}
+              position={[airport.lat, airport.lon]}
+              // Ash on the ground is the operational emergency; ash only aloft
+              // is a routing problem. A published closure outranks both,
+              // because that one is a decision rather than geometry.
+              icon={airportIcon(airport.iata, Boolean(shut), anySurface, now)}
+              title={`${airport.iata} ${airport.name}`}
+              alt={`${airport.iata} ${airport.name}`}
             >
               <Tooltip direction="top" offset={[0, -6]}>
                 <b>{airport.iata}</b> {airport.name}
@@ -397,10 +416,17 @@ export default function AshMap({
                   <>
                     <br />
                     <b>{shut.reason ?? "Closed (NOTAM)"}</b>
+                    <br />
+                    {shut.expiration
+                      ? `Closure ends ${relativeToNow(new Date(shut.expiration))} (${formatDtg(
+                          toFullDtg(shut.expiration),
+                          timeMode
+                        )})`
+                      : "No end time published — until further notice"}
                   </>
                 )}
               </Tooltip>
-            </CircleMarker>
+            </Marker>
           );
         })}
 
