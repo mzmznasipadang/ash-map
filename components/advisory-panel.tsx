@@ -1,7 +1,21 @@
 "use client";
 
 import { useId } from "react";
-import { Bell, ChevronDown, Eye, EyeOff, Info, Layers, Loader2, MapPin, Mountain, Rss, Upload, Wind } from "lucide-react";
+import {
+  Activity,
+  Bell,
+  ChevronDown,
+  Eye,
+  EyeOff,
+  Info,
+  Layers,
+  Loader2,
+  MapPin,
+  Mountain,
+  Rss,
+  Upload,
+  Wind,
+} from "lucide-react";
 
 import type { FrameKey, VaaAdvisory } from "@/lib/vaa";
 import { frameDtg } from "@/lib/vaa";
@@ -29,6 +43,8 @@ import type { VolcanoAlert } from "@/lib/pvmbg";
 import { AlertLevelBadge } from "@/components/alert-level";
 import { AlertsPanel } from "@/components/alerts-panel";
 import type { NotifyPermission } from "@/lib/notify";
+import type { SourceHealth } from "@/lib/health";
+import { SourcesHealth } from "@/components/sources-health";
 
 function Section({
   title,
@@ -88,6 +104,7 @@ export type AdvisoryPanelProps = {
   alertCount: number;
   notifyPermission: NotifyPermission;
   onEnableNotifications: () => void;
+  health: SourceHealth[];
 };
 
 export function AdvisoryPanel({
@@ -121,6 +138,7 @@ export function AdvisoryPanel({
   alertCount,
   notifyPermission,
   onEnableNotifications,
+  health,
 }: AdvisoryPanelProps) {
   // This panel is mounted twice — once in the sidebar, once in the slide-over —
   // so fixed ids would collide and every `htmlFor` would resolve to whichever
@@ -442,6 +460,14 @@ export function AdvisoryPanel({
           </div>
         )}
       </Section>
+      <Section
+        title={t("health.title")}
+        defaultOpen={false}
+        icon={<Activity className="size-4 text-muted-foreground" aria-hidden="true" />}
+      >
+        <SourcesHealth health={health} />
+      </Section>
+
       <Section
         title={t("section.about")}
         defaultOpen={false}

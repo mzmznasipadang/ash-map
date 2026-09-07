@@ -303,7 +303,26 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
     without that. Carries the language switch, so a first-time Indonesian
     reader can change it before reading anything else.
 
-16. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
+16. **Source health** — four independent sources feed this map, and every
+    failure this project has had was *silent*: polling one product slot showed
+    one volcano when five were advised; the archive tree served ten-day-old
+    data; an `EST` suffix turned a real closure end time into "no end time";
+    `EST VA CLD` dropped the current cloud for four of five volcanoes; a
+    licence key sent to the wrong channel returned 403. Each rendered
+    confidently and nothing said otherwise.
+
+    So the state that matters most is not "failed" — a failure is visible where
+    the data was needed. It is **suspect**: the request succeeded and returned
+    nothing plausible. An empty PVMBG parse is suspect because Indonesia is
+    never empty; a listing with zero product slots is suspect because a quiet
+    feed still lists its slots. A feed that lists slots and reports no current
+    advisory is genuinely fine, and is reported as fine.
+
+    Derived entirely from responses the client already holds, so it costs no
+    extra request and cannot itself be the thing that breaks. A dot appears in
+    the header only when something needs attention.
+
+17. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
    detail card, and a legend; a slide-over panel below `lg`; light/dark theme
    with a toggle in the header.
 
@@ -360,7 +379,7 @@ flight-level bands.
 
 ## What was verified
 
-- `npm test` — 93 checks over the VAA parser, the morph math, the wind grid,
+- `npm test` — 104 checks over the VAA parser, the morph math, the wind grid,
   the Darwin feed's file selection, and DTG parsing across month and year
   boundaries, on `node:test` + `node:assert` with no test framework.
 - `npm run build` and `tsc --noEmit` complete cleanly; `eslint .` is clean.
@@ -441,6 +460,7 @@ components/
   credits.tsx            author and data-source attribution
   time-mode.tsx          Zulu/local preference, explainer, <Dtg>
   map-legend.tsx         the colour bands, fixed to the map
+  sources-health.tsx     source health panel + header indicator
   i18n.tsx               locale context, t(), language switch
   onboarding.tsx         first-run explanation of the three sources
   airport-impact.tsx     affected-airport list + NOTAM lookup
@@ -456,6 +476,7 @@ lib/
   impact.ts              which airports sit under a cloud, and how high
   notams.ts              SkyLink channel/field normalization
   ash-text.ts            the ash sentence, built per locale
+  health.ts              per-source trust assessment
   i18n.ts                EN/ID message catalogue
   notify.ts              what counts as news, for notifications
   pvmbg.ts               alert-level scrape + VAAC name matching

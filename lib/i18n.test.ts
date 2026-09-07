@@ -31,6 +31,8 @@ test("no string is left untranslated by copy-paste", () => {
     "feed.frames.other",
     "airports.closures.one",
     "airports.closures.other",
+    "health.attention.one",
+    "health.attention.other",
     "time.zulu",
     "feed.areaIndonesia",
     "onboarding.notamTitle",

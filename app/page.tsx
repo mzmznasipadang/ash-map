@@ -16,6 +16,8 @@ import { Onboarding } from "@/components/onboarding";
 import { assessAcross } from "@/lib/impact";
 import { useAlertLevels } from "@/components/alert-level";
 import { ashSentence } from "@/lib/ash-text";
+import { assessSources } from "@/lib/health";
+import { HealthIndicator } from "@/components/sources-health";
 import { diffForNotification, notify, permission as notifyPermissionNow, requestPermission, type NotifiableState, type NotifyPermission } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -108,6 +110,8 @@ function MapView() {
     }>
   >({});
   const closureKey = impacts.map((i) => i.airport.icao).join(",");
+  const [notamsConfigured, setNotamsConfigured] = useState<boolean | null>(null);
+  const [notamsChecked, setNotamsChecked] = useState(false);
 
   const loadClosures = useCallback(async (codes: string) => {
     if (!codes) {
@@ -118,8 +122,11 @@ function MapView() {
       const res = await fetch(`/api/notams/closures?icao=${codes}`);
       const data = await res.json();
       setClosures(data.closed ?? {});
+      setNotamsConfigured(data.configured ?? null);
+      setNotamsChecked(true);
     } catch {
       // Without flags the pins simply stay unmarked.
+      setNotamsChecked(true);
     }
   }, []);
 
@@ -162,6 +169,8 @@ function MapView() {
   const [showWind, setShowWind] = useState(true);
   const [windLevel, setWindLevel] = useState(WIND_LEVELS[2].hpa);
   const [windVectors, setWindVectors] = useState<WindVector[]>([]);
+  const [windError, setWindError] = useState<string | null>(null);
+  const [windFetchedAt, setWindFetchedAt] = useState<string | null>(null);
 
   // The wind overlay is refreshed by the three things that actually invalidate
   // it — the map moved, the level changed, the layer was toggled — instead of an
@@ -223,9 +232,17 @@ function MapView() {
         `/api/wind?north=${b.north}&south=${b.south}&east=${b.east}&west=${b.west}&level=${level}`
       );
       const data = await res.json();
-      if (res.ok) setWindVectors(data.vectors);
-    } catch {
-      // wind is a "nice to have" overlay; a failed fetch just means no arrows this refresh
+      if (res.ok) {
+        setWindVectors(data.vectors);
+        setWindError(null);
+        setWindFetchedAt(new Date().toISOString());
+      } else {
+        setWindError(data.error ?? `HTTP ${res.status}`);
+      }
+    } catch (e) {
+      // The overlay is a nice-to-have, so a failure must not interrupt the
+      // map — but the health panel should still be able to say it happened.
+      setWindError((e as Error).message);
     }
   }, []);
 
@@ -285,6 +302,42 @@ function MapView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedFiles, closureKeys]);
 
+  const health = useMemo(
+    () =>
+      assessSources({
+        darwin: {
+          fetchedAt: feed.fetchedAt,
+          error: feed.error,
+          scanned: feed.fetchStats?.scanned,
+          total: feed.total,
+        },
+        pvmbg: {
+          fetchedAt: alertLevels.fetchedAt,
+          error: alertLevels.error,
+          count: alertLevels.alerts.length,
+          stale: alertLevels.stale,
+        },
+        wind: { fetchedAt: windFetchedAt, error: windError, vectors: windVectors.length, enabled: showWind },
+        notams: { configured: notamsConfigured ?? undefined, checked: notamsChecked },
+      }),
+    [
+      feed.fetchedAt,
+      feed.error,
+      feed.fetchStats?.scanned,
+      feed.total,
+      alertLevels.fetchedAt,
+      alertLevels.error,
+      alertLevels.alerts.length,
+      alertLevels.stale,
+      windFetchedAt,
+      windError,
+      windVectors.length,
+      showWind,
+      notamsConfigured,
+      notamsChecked,
+    ]
+  );
+
   const panel = (
     <AdvisoryPanel
       samples={SAMPLE_ADVISORIES}
@@ -331,6 +384,7 @@ function MapView() {
       alertCount={alertLevels.alerts.length}
       notifyPermission={notifyPerm}
       onEnableNotifications={enableNotifications}
+      health={health}
     />
   );
 
@@ -361,6 +415,7 @@ function MapView() {
           <h1 className="truncate text-sm font-semibold">{t("app.title")}</h1>
           <p className="hidden truncate text-xs text-muted-foreground sm:block">{t("app.tagline")}</p>
         </div>
+        <HealthIndicator health={health} />
         <LocaleToggle />
         <ThemeToggle />
       </header>

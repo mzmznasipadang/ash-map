@@ -34,6 +34,8 @@ const POLL_MS = 30 * 60 * 1000;
 export function useAlertLevels() {
   const [alerts, setAlerts] = useState<VolcanoAlert[]>([]);
   const [stale, setStale] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fetchedAt, setFetchedAt] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -42,8 +44,11 @@ export function useAlertLevels() {
       const data = await res.json();
       setAlerts(data.alerts ?? []);
       setStale(Boolean(data.stale));
-    } catch {
-      // The badges just do not appear.
+      setError(data.error ?? null);
+      setFetchedAt(data.fetchedAt ?? null);
+    } catch (e) {
+      // The badges just do not appear — but the health panel should say why.
+      setError((e as Error).message);
     }
   }, []);
 
@@ -60,5 +65,5 @@ export function useAlertLevels() {
 
   const forVolcano = useCallback((name?: string) => findAlert(name, alerts), [alerts]);
 
-  return { alerts, stale, forVolcano };
+  return { alerts, stale, error, fetchedAt, forVolcano };
 }

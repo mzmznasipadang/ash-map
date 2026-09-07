@@ -188,6 +188,26 @@ const en = {
   "onboarding.language": "Language",
 
   "lang.label": "Language",
+
+  "health.title": "Source health",
+  "health.blurb":
+    "Four independent sources feed this map. A failure is loud; the risk is a source that answers successfully with nothing, which looks like calm weather. That is flagged separately.",
+  "health.source.darwin": "Darwin VAAC advisories (BOM FTP)",
+  "health.source.pvmbg": "Volcano alert levels (PVMBG)",
+  "health.source.wind": "Wind field (Open-Meteo)",
+  "health.source.notams": "Aerodrome NOTAMs (SkyLink)",
+  "health.state.ok": "Working",
+  "health.state.suspect": "Answered with nothing",
+  "health.state.failed": "Failed",
+  "health.state.stale": "Out of date",
+  "health.state.unknown": "Not checked yet",
+  "health.state.unconfigured": "Not in use",
+  "health.age": "{age} ago",
+  "health.ageNow": "just now",
+  "health.allOk": "All sources working",
+  "health.attention.one": "{count} source needs attention",
+  "health.attention.other": "{count} sources need attention",
+  "health.indicator": "Source health: {state}",
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -367,6 +387,26 @@ const id: Record<MessageKey, string> = {
   "onboarding.language": "Bahasa",
 
   "lang.label": "Bahasa",
+
+  "health.title": "Kesehatan sumber data",
+  "health.blurb":
+    "Empat sumber independen memasok peta ini. Kegagalan mudah terlihat; risikonya adalah sumber yang merespons dengan sukses namun kosong, yang terlihat seperti kondisi tenang. Hal itu ditandai secara terpisah.",
+  "health.source.darwin": "Adviso VAAC Darwin (FTP BOM)",
+  "health.source.pvmbg": "Tingkat aktivitas gunung api (PVMBG)",
+  "health.source.wind": "Medan angin (Open-Meteo)",
+  "health.source.notams": "NOTAM bandara (SkyLink)",
+  "health.state.ok": "Berfungsi",
+  "health.state.suspect": "Merespons tanpa data",
+  "health.state.failed": "Gagal",
+  "health.state.stale": "Kedaluwarsa",
+  "health.state.unknown": "Belum diperiksa",
+  "health.state.unconfigured": "Tidak dipakai",
+  "health.age": "{age} lalu",
+  "health.ageNow": "baru saja",
+  "health.allOk": "Semua sumber berfungsi",
+  "health.attention.one": "{count} sumber perlu diperiksa",
+  "health.attention.other": "{count} sumber perlu diperiksa",
+  "health.indicator": "Kesehatan sumber data: {state}",
 };
 
 const CATALOG: Record<Locale, Record<MessageKey, string>> = { en, id };
@@ -387,7 +427,7 @@ export function translate(locale: Locale, key: MessageKey, params?: Record<strin
 /** Plural-aware lookup for the handful of counted strings. */
 export function translateCount(
   locale: Locale,
-  base: "feed.newCount" | "feed.frames" | "airports.closures",
+  base: "feed.newCount" | "feed.frames" | "airports.closures" | "health.attention",
   count: number,
   params?: Record<string, string | number>
 ): string {
