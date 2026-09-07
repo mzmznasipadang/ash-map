@@ -322,7 +322,22 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
     extra request and cannot itself be the thing that breaks. A dot appears in
     the header only when something needs attention.
 
-17. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
+17. **Discoverability** — `robots.txt`, `sitemap.xml`, a web manifest (so it
+    installs on a phone, which is where "monitor volcanic ash" gets read), a
+    canonical URL, and JSON-LD describing both the application and the dataset,
+    including the Indonesia bounding box and the GeoJSON distribution.
+
+    Structured data carries more weight here than on an ordinary page: the map
+    is client-rendered, so the served HTML is the app shell and nothing more.
+    JSON-LD is read without executing any of it. A `<noscript>` block states
+    what the app is and points at the GeoJSON endpoint, which needs no
+    JavaScript at all.
+
+    `robots.txt` disallows the API routes. They open FTP sessions and spend a
+    metered NOTAM quota, so a crawl should not be paying for them — but the
+    GeoJSON export stays reachable to anyone following the link.
+
+18. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
    detail card, and a legend; a slide-over panel below `lg`; light/dark theme
    with a toggle in the header.
 
@@ -443,6 +458,9 @@ and NOTAMs issued by the responsible VAAC and your national AIS.
 app/
   page.tsx               app shell + state (map, sidebar, slide-over)
   layout.tsx             theme provider
+  robots.ts              crawler rules; the API routes are disallowed
+  sitemap.ts             one route, hourly
+  manifest.ts            installable web app
   icon.svg               favicon (the mark; Next serves it as rel=icon)
   apple-icon.tsx         the same mark rendered to PNG for iOS
   opengraph-image.png    1200x630 link-preview card
@@ -477,6 +495,7 @@ lib/
   notams.ts              SkyLink channel/field normalization
   ash-text.ts            the ash sentence, built per locale
   health.ts              per-source trust assessment
+  site.ts                canonical facts + JSON-LD
   i18n.ts                EN/ID message catalogue
   notify.ts              what counts as news, for notifications
   pvmbg.ts               alert-level scrape + VAAC name matching
