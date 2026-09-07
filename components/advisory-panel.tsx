@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { ChevronDown, Eye, EyeOff, Info, Layers, Loader2, MapPin, Rss, Upload, Wind } from "lucide-react";
+import { Bell, ChevronDown, Eye, EyeOff, Info, Layers, Loader2, MapPin, Mountain, Rss, Upload, Wind } from "lucide-react";
 
 import type { FrameKey, VaaAdvisory } from "@/lib/vaa";
 import { frameDtg } from "@/lib/vaa";
@@ -24,6 +24,10 @@ import { Credits } from "@/components/credits";
 import { Dtg, TimeModeIcon, TimeModeToggle } from "@/components/time-mode";
 import { AirportImpactIcon, AirportImpactList } from "@/components/airport-impact";
 import type { AirportImpact } from "@/lib/impact";
+import type { VolcanoAlert } from "@/lib/pvmbg";
+import { AlertLevelBadge } from "@/components/alert-level";
+import { AlertsPanel } from "@/components/alerts-panel";
+import type { NotifyPermission } from "@/lib/notify";
 
 function Section({
   title,
@@ -78,6 +82,11 @@ export type AdvisoryPanelProps = {
   minFlightLevel: number;
   onMinFlightLevel: (fl: number) => void;
   impacts: (AirportImpact & { volcanoes?: string[] })[];
+  alertFor: (name?: string) => VolcanoAlert | undefined;
+  alertsList: VolcanoAlert[];
+  alertCount: number;
+  notifyPermission: NotifyPermission;
+  onEnableNotifications: () => void;
 };
 
 export function AdvisoryPanel({
@@ -106,6 +115,11 @@ export function AdvisoryPanel({
   minFlightLevel,
   onMinFlightLevel,
   impacts,
+  alertFor,
+  alertsList,
+  alertCount,
+  notifyPermission,
+  onEnableNotifications,
 }: AdvisoryPanelProps) {
   // This panel is mounted twice — once in the sidebar, once in the slide-over —
   // so fixed ids would collide and every `htmlFor` would resolve to whichever
@@ -116,7 +130,7 @@ export function AdvisoryPanel({
   return (
     <div className="divide-y px-4 pb-8">
       <Section title="Darwin VAAC feed" defaultOpen={false} icon={<Rss className="size-4 text-muted-foreground" aria-hidden="true" />}>
-        <DarwinFeed state={feed} onSelect={onSelectFeedItem} />
+        <DarwinFeed state={feed} onSelect={onSelectFeedItem} alerts={alertsList} />
       </Section>
       {advisory && (
         <div className="py-4">
@@ -129,6 +143,9 @@ export function AdvisoryPanel({
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {advisory.vaac && <Badge variant="secondary">{advisory.vaac} VAAC</Badge>}
                 {advisory.advisoryNr && <Badge variant="outline">#{advisory.advisoryNr}</Badge>}
+                {/* PVMBG's own status for the volcano, distinct from the ash
+                    the advisory describes. */}
+                <AlertLevelBadge alert={alertFor(advisory.volcano)} />
               </div>
             </CardHeader>
             <CardContent className="space-y-3 px-4 text-xs">
@@ -209,6 +226,26 @@ export function AdvisoryPanel({
           <AirportImpactList impacts={impacts} />
         </Section>
       )}
+      <Section
+        title="Alerts"
+        defaultOpen={false}
+        icon={<Bell className="size-4 text-muted-foreground" aria-hidden="true" />}
+      >
+        <AlertsPanel permission={notifyPermission} onEnable={onEnableNotifications} />
+      </Section>
+
+      <Section
+        title="Volcano alert levels"
+        defaultOpen={false}
+        icon={<Mountain className="size-4 text-muted-foreground" aria-hidden="true" />}
+      >
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {alertCount > 0
+            ? `${alertCount} Indonesian volcanoes are on PVMBG's watch list. Levels run I Normal, II Waspada, III Siaga, IV Awas; Level IV means evacuation is under way. The level shown on an advisory is the volcano's own status, which is separate from whether its ash is currently in the air.`
+            : "PVMBG alert levels are unavailable right now."}
+        </p>
+      </Section>
+
       <Section title="Wind overlay" icon={<Wind className="size-4 text-muted-foreground" aria-hidden="true" />}>
         <div className="flex items-center justify-between gap-2">
           <Label htmlFor={id("wind-toggle")} className="font-normal">

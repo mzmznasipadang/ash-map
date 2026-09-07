@@ -214,7 +214,38 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
    affected. Rings crossing the antimeridian are shifted before testing, or a
    Pacific cloud would flag airports in Indonesia.
 
-9. **Times you can actually read** — advisories are timed in Zulu (UTC), which
+9. **Volcano alert levels** — `/api/pvmbg` reads PVMBG (Indonesia's
+   volcanology agency) for each volcano's own status: I Normal, II Waspada,
+   III Siaga, IV Awas, where Level IV means evacuation is under way.
+
+   This is the third of three sources, and they answer different questions.
+   The advisory says whether ash is in the air and how high; a NOTAM says
+   whether the aerodrome is restricted; PVMBG says what the mountain is doing.
+   A volcano can sit at Siaga with no ash aloft, or drift ash across a country
+   while back at Waspada.
+
+   Scraped, because the JSON API needs credentials while the public page does
+   not. PVMBG and the VAACs also name the same volcano differently — "Anak
+   Krakatau" against `KRAKATAU`, "Ili Lewotolok" against `LEWOTOLOK` — and the
+   page carries no shared identifier, so the join is normalized names plus an
+   explicit alias list. `LEWOTOBI` and `LEWOTOLOK` share five letters, so the
+   fallback match is longest-first and length-guarded; a prefix match would
+   put one volcano's alert level on another.
+
+   An empty parse is treated as an error, not as "no volcano is under alert",
+   and the last good scrape is served instead.
+
+10. **Alerts** — a desktop notification when Darwin issues a new advisory for a
+    volcano on the map, or when an aerodrome under the ash is reported closed.
+    The first load announces nothing (everything is new on open, which would be
+    noise), and repeats for one volcano share a tag so an hourly re-advisory
+    replaces its own notification rather than stacking.
+
+    Ceiling: the Notification API only, no service worker and no push server,
+    so the tab has to be open. That matches the feed, which already stops
+    polling when the tab is hidden. Web push needs somewhere to run the poller.
+
+11. **Times you can actually read** — advisories are timed in Zulu (UTC), which
    assumes the reader both knows that and can convert it. A "Times & time zone"
    section explains it and switches every timestamp to the reader's own zone;
    hovering a time always shows the other. Zulu stays the default, because it
@@ -226,13 +257,13 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
    otherwise resolves into the wrong month, and `Date.UTC` would report the
    rollover as a real date instead of an invalid one.
 
-10. **Playback and refresh rates** — the transport plays at 1x to 12x (GSAP
+12. **Playback and refresh rates** — the transport plays at 1x to 12x (GSAP
    `timeScale`, applied mid-playback). Auto-refresh is selectable: off, 15 min,
    30 min or 1 hour, defaulting to 30, since Darwin re-advises a volcano at
    most hourly. A tab that sat hidden past the interval refreshes when it comes
    back, and there is a manual Refresh button.
 
-11. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
+13. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
    detail card, and a legend; a slide-over panel below `lg`; light/dark theme
    with a toggle in the header.
 
@@ -289,7 +320,7 @@ flight-level bands.
 
 ## What was verified
 
-- `npm test` — 64 checks over the VAA parser, the morph math, the wind grid,
+- `npm test` — 79 checks over the VAA parser, the morph math, the wind grid,
   the Darwin feed's file selection, and DTG parsing across month and year
   boundaries, on `node:test` + `node:assert` with no test framework.
 - `npm run build` and `tsc --noEmit` complete cleanly; `eslint .` is clean.
@@ -338,6 +369,7 @@ The data is not mine and carries its publishers' terms:
 |---|---|
 | Darwin VAAC advisories | © Commonwealth of Australia, [Bureau of Meteorology](http://www.bom.gov.au/aviation/volcanic-ash/) |
 | Washington VAAC advisories | [NOAA / NWS Satellite Analysis Branch](https://www.ospo.noaa.gov/products/atmosphere/vaac/) |
+| Volcano alert levels | [PVMBG](https://magma.esdm.go.id/), Badan Geologi, Kementerian ESDM |
 | Wind forecast | © [Open-Meteo](https://open-meteo.com/), CC BY 4.0 |
 | Basemap tiles | © [Esri](https://www.esri.com/) and its data contributors |
 
@@ -359,6 +391,7 @@ app/
   api/darwin/route.ts    poll BOM's FTP for the newest Darwin bulletins
   api/darwin/geojson/    one FeatureCollection for GIS, area-filterable
   api/notams/[icao]/     published NOTAMs for an aerodrome (needs a key)
+  api/pvmbg/route.ts     Indonesian volcano alert levels
   api/wind/route.ts      wind vector grid from Open-Meteo
 components/
   AshMap.tsx             Leaflet map, GSAP timeline, transport bar
@@ -379,6 +412,8 @@ lib/
   darwin.ts              BOM FTP client + product-file selection
   impact.ts              which airports sit under a cloud, and how high
   notams.ts              SkyLink channel/field normalization
+  notify.ts              what counts as news, for notifications
+  pvmbg.ts               alert-level scrape + VAAC name matching
   logo.ts                the app mark, shared by the generated icons
   area.ts                Indonesia bbox + area matching
   bulletin-cache.ts      immutable-file cache (memory + temp dir)

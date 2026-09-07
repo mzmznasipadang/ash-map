@@ -18,6 +18,12 @@ const SOURCES = [
     note: "Used by the fetch-from-URL path",
   },
   {
+    name: "Volcano alert levels",
+    holder: "PVMBG, Badan Geologi (Kementerian ESDM)",
+    href: "https://magma.esdm.go.id/",
+    note: "Levels I Normal to IV Awas",
+  },
+  {
     name: "Wind field",
     holder: "Open-Meteo",
     href: "https://open-meteo.com/",

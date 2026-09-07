@@ -7,6 +7,8 @@ import type { FrameKey, VaaAdvisory } from "@/lib/vaa";
 import type { AshAssessment } from "@/lib/eruption";
 import { Badge } from "@/components/ui/badge";
 import { Dtg } from "@/components/time-mode";
+import { AlertLevelBadge } from "@/components/alert-level";
+import { findAlert, type VolcanoAlert } from "@/lib/pvmbg";
 import { Label } from "@/components/ui/label";
 
 /** An ISO instant as a full DTG, so <Dtg> can render it in the chosen mode. */
@@ -255,9 +257,11 @@ export function useDarwinFeed({
 export function DarwinFeed({
   state,
   onSelect,
+  alerts = [],
 }: {
   state: DarwinFeedState;
   onSelect: (item: FeedItem) => void;
+  alerts?: VolcanoAlert[];
 }) {
   const {
     items,
@@ -371,6 +375,10 @@ export function DarwinFeed({
                     <span className="min-w-0 flex-1 truncate font-medium">
                       {item.advisory.volcano ?? "Unknown volcano"}
                     </span>
+                    <AlertLevelBadge
+                      alert={findAlert(item.advisory.volcano, alerts)}
+                      className="shrink-0 text-[10px]"
+                    />
                     {drawable ? (
                       <Badge variant="secondary" className="shrink-0 text-[10px]">
                         {item.frames.length} frame{item.frames.length > 1 ? "s" : ""}

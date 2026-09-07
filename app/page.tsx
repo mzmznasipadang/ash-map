@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Mountain, PanelLeft } from "lucide-react";
 
 import type { FrameKey, VaaAdvisory } from "@/lib/vaa";
@@ -12,6 +12,8 @@ import { useDarwinFeed, type FeedItem } from "@/components/darwin-feed";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TimeModeProvider } from "@/components/time-mode";
 import { assessAcross } from "@/lib/impact";
+import { useAlertLevels } from "@/components/alert-level";
+import { diffForNotification, notify, permission as notifyPermissionNow, requestPermission, type NotifiableState, type NotifyPermission } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -106,6 +108,10 @@ export default function Home() {
       // Without flags the pins simply stay unmarked.
     }
   }, []);
+
+  // PVMBG's status for each volcano: what the mountain is doing, as opposed to
+  // where its ash currently is.
+  const alertLevels = useAlertLevels();
 
   const [closuresFor, setClosuresFor] = useState("");
   if (closureKey !== closuresFor) {
@@ -232,6 +238,39 @@ export default function Home() {
     refreshWind();
   };
 
+  // Notifications. The diff lives in lib/notify.ts so what counts as news is
+  // testable; this only decides when to look.
+  //
+  // The Alerts section is collapsed by default, and Radix unmounts closed
+  // content, so reading the live permission in the initializer cannot produce
+  // a hydration mismatch.
+  const [notifyPerm, setNotifyPerm] = useState<NotifyPermission>(() =>
+    typeof window === "undefined" ? "default" : notifyPermissionNow()
+  );
+  const notifiedState = useRef<NotifiableState | null>(null);
+
+  const enableNotifications = useCallback(async () => {
+    setNotifyPerm(await requestPermission());
+  }, []);
+
+  const feedFiles = (feed.items ?? []).map((i) => i.file).join(",");
+  const closureKeys = Object.keys(closures).sort().join(",");
+
+  useEffect(() => {
+    const next: NotifiableState = {
+      advisories: (feed.items ?? []).map((i) => ({
+        file: i.file,
+        volcano: i.advisory.volcano ?? "Unknown",
+        summary: i.ash.summary,
+      })),
+      closures: Object.fromEntries(Object.entries(closures).map(([k, v]) => [k, { reason: v.reason }])),
+    };
+    for (const e of diffForNotification(notifiedState.current, next)) notify(e.title, e.body, e.tag);
+    notifiedState.current = next;
+    // Keyed on the identities, not the objects, which are rebuilt every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedFiles, closureKeys]);
+
   const panel = (
     <AdvisoryPanel
       samples={SAMPLE_ADVISORIES}
@@ -273,6 +312,11 @@ export default function Home() {
       minFlightLevel={minFlightLevel}
       onMinFlightLevel={setMinFlightLevel}
       impacts={impacts}
+      alertFor={alertLevels.forVolcano}
+      alertsList={alertLevels.alerts}
+      alertCount={alertLevels.alerts.length}
+      notifyPermission={notifyPerm}
+      onEnableNotifications={enableNotifications}
     />
   );
 
