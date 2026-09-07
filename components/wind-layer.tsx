@@ -55,7 +55,9 @@ export function WindLayer({ vectors, visible }: { vectors: WindVector[]; visible
   useEffect(() => {
     if (!map.getPane(PANE)) {
       const pane = map.createPane(PANE);
-      pane.style.zIndex = "350";
+      // Above the ash polygons (overlayPane, 400) and below the airport pins
+      // (500): wind reads as the thing moving the cloud, not under it.
+      pane.style.zIndex = "450";
       pane.style.pointerEvents = "none";
     }
     const pane = map.getPane(PANE)!;

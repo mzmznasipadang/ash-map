@@ -38,6 +38,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ icao: strin
     return NextResponse.json({ error: "Expected a 4-letter ICAO code" }, { status: 400 });
   }
 
+  // Only the closure notices matter here; a hub returns ~93, almost all
+  // en-route. ?only=all returns everything.
+  const closuresOnly = req.nextUrl.searchParams.get("only") !== "all";
+
   const key = process.env.SKYLINK_API_KEY;
   if (!key) {
     return NextResponse.json({
@@ -56,7 +60,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ icao: strin
       ? process.env.SKYLINK_API_CHANNEL
       : inferChannel(key);
 
-  const cacheKey = `${channel}:${icao}`;
+  const cacheKey = `${channel}:${icao}:${closuresOnly ? "clsd" : "all"}`;
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_MS) {
     return NextResponse.json({ configured: true, cached: true, ...(hit.body as object) });
@@ -94,15 +98,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ icao: strin
       );
     }
 
-    const notams = rankNotams(extractList(await res.json()).map(normalizeNotam));
+    const all = rankNotams(extractList(await res.json()).map(normalizeNotam));
+    const notams = closuresOnly ? all.filter((n) => n.closure || n.ashRelated) : all;
 
     const body = {
       icao,
       channel,
       airport: findAirport(icao)?.name ?? null,
-      count: notams.length,
-      ashRelated: notams.filter((n) => n.ashRelated).length,
-      closures: notams.filter((n) => n.closure).length,
+      count: all.length,
+      shown: notams.length,
+      ashRelated: all.filter((n) => n.ashRelated).length,
+      closures: all.filter((n) => n.closure).length,
       notams,
       source: "SkyLink NOTAM API (FAA SWIM FNS)",
       fetchedAt: new Date().toISOString(),

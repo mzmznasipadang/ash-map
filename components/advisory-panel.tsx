@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { ChevronDown, Eye, EyeOff, FileText, Info, Layers, Loader2, MapPin, Rss, Upload, Wind } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, Info, Layers, Loader2, MapPin, Rss, Upload, Wind } from "lucide-react";
 
 import type { FrameKey, VaaAdvisory } from "@/lib/vaa";
 import { frameDtg } from "@/lib/vaa";
@@ -115,77 +115,9 @@ export function AdvisoryPanel({
 
   return (
     <div className="divide-y px-4 pb-8">
-      <Section title="Darwin VAAC feed" icon={<Rss className="size-4 text-muted-foreground" aria-hidden="true" />}>
+      <Section title="Darwin VAAC feed" defaultOpen={false} icon={<Rss className="size-4 text-muted-foreground" aria-hidden="true" />}>
         <DarwinFeed state={feed} onSelect={onSelectFeedItem} />
       </Section>
-
-      <Section
-        title="Load an advisory"
-        defaultOpen={false}
-        icon={<Upload className="size-4 text-muted-foreground" aria-hidden="true" />}
-      >
-        <div className="space-y-2">
-          <Label htmlFor={id("vaac-sample")}>Official VAAC URL</Label>
-          <Select value={urlInput} onValueChange={onUrlInput}>
-            <SelectTrigger id={id("vaac-sample")} className="w-full">
-              <SelectValue placeholder="Pick a source" />
-            </SelectTrigger>
-            <SelectContent>
-              {samples.map((s) => (
-                <SelectItem key={s.url} value={s.url}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Input
-            value={urlInput}
-            onChange={(e) => onUrlInput(e.target.value)}
-            placeholder="https://www.ospo.noaa.gov/VAAC/..."
-            className="font-mono text-xs"
-          />
-          <Button onClick={onLoadUrl} disabled={loading} aria-busy={loading} className="w-full">
-            {loading && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-            Fetch advisory
-          </Button>
-        </div>
-
-        <Separator />
-
-        <div className="space-y-2">
-          <Label htmlFor={id("vaa-text")}>Or paste raw VAA text</Label>
-          <p className="text-xs text-muted-foreground">
-            Works for any VAAC — Darwin, Tokyo, London, Toulouse — the ICAO format is identical.
-          </p>
-          <Textarea
-            id={id("vaa-text")}
-            value={textInput}
-            onChange={(e) => onTextInput(e.target.value)}
-            placeholder="DTG: ... VAAC: ... VOLCANO: ..."
-            className="h-28 font-mono text-xs"
-          />
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              className="flex-1"
-              onClick={() => onParseText(textInput)}
-              disabled={loading || !textInput.trim()}
-            >
-              Parse
-            </Button>
-            <Button variant="outline" className="flex-1" onClick={onLoadSample} disabled={loading}>
-              Krakatau sample
-            </Button>
-          </div>
-        </div>
-
-        {error && (
-          <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert" aria-live="assertive">
-            {error}
-          </p>
-        )}
-      </Section>
-
       {advisory && (
         <div className="py-4">
           <Card className="gap-3 py-4">
@@ -272,15 +204,37 @@ export function AdvisoryPanel({
           </Card>
         </div>
       )}
-
       {plotted.length > 0 && (
-        <Section title="Airports under ash" icon={<AirportImpactIcon />}>
+      <Section title="Airports under ash" icon={<AirportImpactIcon />}>
           <AirportImpactList impacts={impacts} />
         </Section>
       )}
-
+      <Section title="Wind overlay" icon={<Wind className="size-4 text-muted-foreground" aria-hidden="true" />}>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor={id("wind-toggle")} className="font-normal">
+            Show vectors
+            <span className="block text-xs text-muted-foreground">Open-Meteo, live</span>
+          </Label>
+          <Switch id={id("wind-toggle")} checked={showWind} onCheckedChange={onShowWind} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={id("wind-level")}>Pressure level</Label>
+          <Select value={windLevel} onValueChange={onWindLevel} disabled={!showWind}>
+            <SelectTrigger id={id("wind-level")} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {WIND_LEVELS.map((l) => (
+                <SelectItem key={l.hpa} value={l.hpa}>
+                  {l.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </Section>
       {plotted.length > 0 && (
-        <Section title="Layers on the map" icon={<Layers className="size-4 text-muted-foreground" aria-hidden="true" />}>
+      <Section title="Layers on the map" icon={<Layers className="size-4 text-muted-foreground" aria-hidden="true" />}>
           <ul className="space-y-1">
             {plotted.map((item) => {
               const isHidden = hidden.has(item.id);
@@ -338,54 +292,9 @@ export function AdvisoryPanel({
           </div>
         </Section>
       )}
-
-      {advisory?.raw && (
-        <Section
-          title="Raw bulletin"
-          defaultOpen={false}
-          icon={<FileText className="size-4 text-muted-foreground" aria-hidden="true" />}
-        >
-          <RawBulletin raw={advisory.raw} />
-        </Section>
-      )}
-
       <Section title="Times &amp; time zone" defaultOpen={false} icon={<TimeModeIcon />}>
         <TimeModeToggle />
       </Section>
-
-      <Section title="Wind overlay" icon={<Wind className="size-4 text-muted-foreground" aria-hidden="true" />}>
-        <div className="flex items-center justify-between gap-2">
-          <Label htmlFor={id("wind-toggle")} className="font-normal">
-            Show vectors
-            <span className="block text-xs text-muted-foreground">Open-Meteo, live</span>
-          </Label>
-          <Switch id={id("wind-toggle")} checked={showWind} onCheckedChange={onShowWind} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={id("wind-level")}>Pressure level</Label>
-          <Select value={windLevel} onValueChange={onWindLevel} disabled={!showWind}>
-            <SelectTrigger id={id("wind-level")} className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {WIND_LEVELS.map((l) => (
-                <SelectItem key={l.hpa} value={l.hpa}>
-                  {l.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </Section>
-
-      <Section
-        title="About &amp; sources"
-        defaultOpen={false}
-        icon={<Info className="size-4 text-muted-foreground" aria-hidden="true" />}
-      >
-        <Credits />
-      </Section>
-
       <Section title="Legend" icon={<span aria-hidden="true" className="size-4 rounded-sm bg-gradient-to-br from-sky-400 to-purple-600" />}>
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Ash polygon — advisory flight level</p>
@@ -415,6 +324,86 @@ export function AdvisoryPanel({
             ))}
           </div>
         </div>
+      </Section>
+      <Section
+        title="Advisory source"
+        defaultOpen={false}
+        icon={<Upload className="size-4 text-muted-foreground" aria-hidden="true" />}
+      >
+        <div className="space-y-2">
+          <Label htmlFor={id("vaac-sample")}>Official VAAC URL</Label>
+          <Select value={urlInput} onValueChange={onUrlInput}>
+            <SelectTrigger id={id("vaac-sample")} className="w-full">
+              <SelectValue placeholder="Pick a source" />
+            </SelectTrigger>
+            <SelectContent>
+              {samples.map((s) => (
+                <SelectItem key={s.url} value={s.url}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            value={urlInput}
+            onChange={(e) => onUrlInput(e.target.value)}
+            placeholder="https://www.ospo.noaa.gov/VAAC/..."
+            className="font-mono text-xs"
+          />
+          <Button onClick={onLoadUrl} disabled={loading} aria-busy={loading} className="w-full">
+            {loading && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+            Fetch advisory
+          </Button>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <Label htmlFor={id("vaa-text")}>Or paste raw VAA text</Label>
+          <p className="text-xs text-muted-foreground">
+            Works for any VAAC — Darwin, Tokyo, London, Toulouse — the ICAO format is identical.
+          </p>
+          <Textarea
+            id={id("vaa-text")}
+            value={textInput}
+            onChange={(e) => onTextInput(e.target.value)}
+            placeholder="DTG: ... VAAC: ... VOLCANO: ..."
+            className="h-28 font-mono text-xs"
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => onParseText(textInput)}
+              disabled={loading || !textInput.trim()}
+            >
+              Parse
+            </Button>
+            <Button variant="outline" className="flex-1" onClick={onLoadSample} disabled={loading}>
+              Krakatau sample
+            </Button>
+          </div>
+        </div>
+
+        {error && (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert" aria-live="assertive">
+            {error}
+          </p>
+        )}
+
+        {advisory?.raw && (
+          <div className="space-y-2 border-t pt-3">
+            <p className="text-xs font-medium">Raw bulletin</p>
+            <RawBulletin raw={advisory.raw} />
+          </div>
+        )}
+      </Section>
+      <Section
+        title="About &amp; sources"
+        defaultOpen={false}
+        icon={<Info className="size-4 text-muted-foreground" aria-hidden="true" />}
+      >
+        <Credits />
       </Section>
 
       <div className="flex items-baseline justify-between gap-2 pt-4 text-xs">

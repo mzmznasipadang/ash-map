@@ -78,6 +78,34 @@ export default function Home() {
   // can never disagree about which airports are affected.
   const impacts = useMemo(() => assessAcross(visible.map((p) => p.advisory)), [visible]);
 
+  // Closure notices for the impacted airports only, in one request. A
+  // published closure is a decision by the aerodrome's authority, which the
+  // geometry cannot know, so it outranks the polygon on the map.
+  const [closures, setClosures] = useState<
+    Record<string, { closure: boolean; ash: boolean; reason: string | null }>
+  >({});
+  const closureKey = impacts.map((i) => i.airport.icao).join(",");
+
+  const loadClosures = useCallback(async (codes: string) => {
+    if (!codes) {
+      setClosures({});
+      return;
+    }
+    try {
+      const res = await fetch(`/api/notams/closures?icao=${codes}`);
+      const data = await res.json();
+      setClosures(data.closed ?? {});
+    } catch {
+      // Without flags the pins simply stay unmarked.
+    }
+  }, []);
+
+  const [closuresFor, setClosuresFor] = useState("");
+  if (closureKey !== closuresFor) {
+    setClosuresFor(closureKey);
+    void loadClosures(closureKey);
+  }
+
   // The feed hands over every advisory at once, so the map opens showing every
   // volcano currently under advisory rather than one.
   const showAll = useCallback((items: FeedItem[]) => {
@@ -284,6 +312,7 @@ export default function Home() {
             onSelect={setSelectedId}
             minFlightLevel={minFlightLevel}
             impacts={impacts}
+            closures={closures}
             windVectors={windVectors}
             showWind={showWind}
             onBoundsChange={handleBounds}

@@ -26,6 +26,11 @@ export type PlottedAdvisory = { id: string; advisory: VaaAdvisory; frames: Frame
 
 const SECONDS_PER_FRAME = 1.8;
 
+// Ash polygons sit in Leaflet's overlayPane (400) and wind in its own (450),
+// so the pins need a pane above both or they hide under the cloud they warn
+// about. Below markerPane (600), which holds the volcano markers.
+const AIRPORT_PANE = "ash-airports";
+
 /** Playback rates offered in the transport. */
 const SPEEDS = [1, 2, 4, 6, 12] as const;
 
@@ -74,6 +79,10 @@ function MapSync({
 
   const map = useMapEvents({ moveend: () => emit(map) });
   const fitKey = fit ? fit.map((p) => p.join()).join("|") : "";
+
+  useEffect(() => {
+    if (!map.getPane(AIRPORT_PANE)) map.createPane(AIRPORT_PANE).style.zIndex = "500";
+  }, [map]);
 
   useEffect(() => {
     emit(map);
@@ -130,6 +139,7 @@ export default function AshMap({
   onSelect,
   minFlightLevel = 0,
   impacts = [],
+  closures = {},
   windVectors,
   showWind,
   onBoundsChange,
@@ -141,6 +151,8 @@ export default function AshMap({
   minFlightLevel?: number;
   /** Airports under ash, marked so the impact list and map agree. */
   impacts?: AirportImpact[];
+  /** ICAO -> closure notice, for pins whose aerodrome is actually shut. */
+  closures?: Record<string, { closure: boolean; ash: boolean; reason: string | null }>;
   windVectors: WindVector[];
   showWind: boolean;
   onBoundsChange: (b: Bounds) => void;
@@ -357,28 +369,40 @@ export default function AshMap({
           ));
         })}
 
-        {impacts.map(({ airport, now, anySurface, maxCeiling }) => (
-          <CircleMarker
-            key={`ap-${airport.icao}`}
-            center={[airport.lat, airport.lon]}
-            radius={airport.major ? 6 : 4.5}
-            pathOptions={{
-              // Ash on the ground is the operational emergency; ash only aloft
-              // is a routing problem. The ring says which.
-              color: anySurface ? "#e0433d" : "#f5a623",
-              weight: 2,
-              fillColor: now ? (anySurface ? "#e0433d" : "#f5a623") : "transparent",
-              fillOpacity: now ? 0.85 : 0,
-            }}
-          >
-            <Tooltip direction="top" offset={[0, -6]}>
-              <b>{airport.iata}</b> {airport.name}
-              <br />
-              {now ? "Ash now" : "Ash forecast"} · {anySurface ? "surface upward" : "altitude only"} · FL
-              {maxCeiling}
-            </Tooltip>
-          </CircleMarker>
-        ))}
+        {impacts.map(({ airport, now, anySurface, maxCeiling }) => {
+          const shut = closures[airport.icao];
+          return (
+            <CircleMarker
+              key={`ap-${airport.icao}`}
+              pane={AIRPORT_PANE}
+              center={[airport.lat, airport.lon]}
+              radius={shut ? (airport.major ? 8 : 6.5) : airport.major ? 6 : 4.5}
+              pathOptions={{
+                // Ash on the ground is the operational emergency; ash only
+                // aloft is a routing problem. A published closure outranks
+                // both, because that one is a decision rather than geometry.
+                color: shut ? "#e0433d" : anySurface ? "#e0433d" : "#f5a623",
+                weight: shut ? 3 : 2,
+                fillColor: shut || now ? (anySurface || shut ? "#e0433d" : "#f5a623") : "transparent",
+                fillOpacity: shut ? 1 : now ? 0.85 : 0,
+                dashArray: shut ? undefined : now ? undefined : "3 2",
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -6]}>
+                <b>{airport.iata}</b> {airport.name}
+                <br />
+                {now ? "Ash now" : "Ash forecast"} · {anySurface ? "surface upward" : "altitude only"} · FL
+                {maxCeiling}
+                {shut && (
+                  <>
+                    <br />
+                    <b>{shut.reason ?? "Closed (NOTAM)"}</b>
+                  </>
+                )}
+              </Tooltip>
+            </CircleMarker>
+          );
+        })}
 
         {advisories.map((item) =>
           item.advisory.position ? (
@@ -433,7 +457,7 @@ export default function AshMap({
           the slide-over panel, which is exactly what z-400 was doing. */}
       {canAnimate && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3 sm:p-4">
-          <div className="pointer-events-auto mx-auto flex max-w-2xl items-center gap-3 rounded-xl border bg-background/85 p-2 shadow-lg backdrop-blur-md">
+          <div className="pointer-events-auto mx-auto flex max-w-2xl flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border bg-background/85 p-2 shadow-lg backdrop-blur-md">
             <Button size="icon" onClick={toggle} aria-label={playing ? "Pause" : "Play"}>
               {playing ? <Pause className="size-4" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}
             </Button>
@@ -464,10 +488,10 @@ export default function AshMap({
               onChange={(e) => scrub(Number(e.target.value))}
               aria-label="Advisory forecast time"
               aria-describedby="frame-readout"
-              className="scrubber h-6 flex-1 cursor-pointer bg-transparent focus-visible:outline-none"
+              className="scrubber order-last h-6 w-full min-w-0 cursor-pointer bg-transparent focus-visible:outline-none sm:order-none sm:w-auto sm:flex-1"
             />
 
-            <Badge variant="secondary" className="shrink-0 font-mono tabular-nums">
+            <Badge variant="secondary" className="ml-auto shrink-0 font-mono text-[10px] tabular-nums sm:ml-0 sm:text-xs">
               <span id="frame-readout" ref={readout} aria-live="polite">
                 {frameLabel(0)}
               </span>
