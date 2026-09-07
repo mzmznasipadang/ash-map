@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { FL_BANDS, WIND_BANDS } from "@/lib/style";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useI18n } from "@/components/i18n";
 
 // A legend on the map itself. The sidebar has the same information, but the
 // sidebar is closed on a phone and collapsed on a laptop, so the colours on
@@ -14,6 +15,7 @@ import { Card } from "@/components/ui/card";
 // Heights are given in metres as well as flight levels: "FL300" is precise and
 // meaningless to anyone outside aviation.
 export function MapLegend() {
+  const { t } = useI18n();
   // 152px is 40% of a phone's width, so it starts collapsed there and open on
   // anything larger. Reading `window` in the initializer is safe: AshMap is
   // imported with ssr:false, so this never renders on the server.
@@ -30,7 +32,7 @@ export function MapLegend() {
         aria-expanded={open}
         className="h-7 w-full justify-between rounded-none px-2 text-[11px] font-medium"
       >
-        Legend
+        {t("legend.title")}
         {open ? (
           <ChevronUp className="size-3 text-muted-foreground" aria-hidden="true" />
         ) : (
@@ -41,7 +43,7 @@ export function MapLegend() {
       {open && (
         <div className="space-y-2 border-t px-2 pt-1.5 pb-2">
           <div className="space-y-1">
-            <p className="text-[10px] text-muted-foreground">Ash top</p>
+            <p className="text-[10px] text-muted-foreground">{t("legend.ashTop")}</p>
             {FL_BANDS.map((b) => (
               <div key={b.label} className="flex items-center gap-1.5">
                 <span
@@ -58,7 +60,7 @@ export function MapLegend() {
           </div>
 
           <div className="space-y-1 border-t pt-1.5">
-            <p className="text-[10px] text-muted-foreground">Wind, downwind</p>
+            <p className="text-[10px] text-muted-foreground">{t("legend.windDownwind")}</p>
             <div className="grid grid-cols-2 gap-x-1.5 gap-y-0.5">
               {WIND_BANDS.map((b) => (
                 <div key={b.label} className="flex items-center gap-1">

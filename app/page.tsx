@@ -11,6 +11,8 @@ import { AdvisoryPanel } from "@/components/advisory-panel";
 import { useDarwinFeed, type FeedItem } from "@/components/darwin-feed";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TimeModeProvider } from "@/components/time-mode";
+import { I18nProvider, LocaleToggle, useI18n } from "@/components/i18n";
+import { Onboarding } from "@/components/onboarding";
 import { assessAcross } from "@/lib/impact";
 import { useAlertLevels } from "@/components/alert-level";
 import { diffForNotification, notify, permission as notifyPermissionNow, requestPermission, type NotifiableState, type NotifyPermission } from "@/lib/notify";
@@ -58,6 +60,17 @@ NXT ADVISORY: NO LATER THAN 20260906/0930Z`;
 type Bounds = { north: number; south: number; east: number; west: number };
 
 export default function Home() {
+  return (
+    <I18nProvider>
+      <TimeModeProvider>
+        <MapView />
+      </TimeModeProvider>
+    </I18nProvider>
+  );
+}
+
+function MapView() {
+  const { t } = useI18n();
   const [urlInput, setUrlInput] = useState(SAMPLE_ADVISORIES[0].url);
   const [textInput, setTextInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -321,12 +334,13 @@ export default function Home() {
   );
 
   return (
-    <TimeModeProvider>
+    <>
+      <Onboarding />
       <div className="flex h-full flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-4">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open advisory panel">
+            <Button variant="ghost" size="icon" className="lg:hidden" aria-label={t("map.openPanel")}>
               <PanelLeft className="size-4" />
             </Button>
           </SheetTrigger>
@@ -335,7 +349,7 @@ export default function Home() {
               panel is stuck at 75% of a narrow screen. */}
           <SheetContent side="left" className="data-[side=left]:w-[min(22rem,88vw)] p-0">
             <SheetHeader className="border-b px-4">
-              <SheetTitle>Advisory</SheetTitle>
+              <SheetTitle>{t("app.title")}</SheetTitle>
             </SheetHeader>
             <ScrollArea className="h-[calc(100svh-4rem)]">{panel}</ScrollArea>
           </SheetContent>
@@ -343,11 +357,10 @@ export default function Home() {
 
         <Mountain className="size-5 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-sm font-semibold">Volcanic Ash &amp; Wind Map</h1>
-          <p className="hidden truncate text-xs text-muted-foreground sm:block">
-            Real ICAO advisory polygons, live wind, animated forecast drift
-          </p>
+          <h1 className="truncate text-sm font-semibold">{t("app.title")}</h1>
+          <p className="hidden truncate text-xs text-muted-foreground sm:block">{t("app.tagline")}</p>
         </div>
+        <LocaleToggle />
         <ThemeToggle />
       </header>
 
@@ -367,10 +380,10 @@ export default function Home() {
                 className="rounded-full border bg-background/90 px-3 py-1.5 text-xs shadow-sm backdrop-blur-md"
               >
                 {feed.loading
-                  ? "Reading the Darwin VAAC feed\u2026"
+                  ? t("map.loading")
                   : feed.error
-                    ? `Feed unavailable: ${feed.error}`
-                    : "No advisory plotted. Pick one from the Darwin feed, or paste a bulletin."}
+                    ? t("map.unavailable", { error: feed.error })
+                    : t("map.empty")}
               </p>
             </div>
           )}
@@ -394,6 +407,6 @@ export default function Home() {
         </main>
         </div>
       </div>
-    </TimeModeProvider>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import { Clock } from "lucide-react";
 
 import { formatDtg, formatLocal, formatZulu, localZoneLabel, parseDtg, type TimeMode } from "@/lib/dtg";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n";
 
 const KEY = "ash-map:time-mode";
 
@@ -89,14 +90,15 @@ export function Dtg({
 
 export function TimeModeToggle() {
   const { mode, setMode, zone } = useTimeMode();
+  const { t } = useI18n();
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1.5">
         {(
           [
-            ["zulu", "Zulu (UTC)"],
-            ["local", "My time"],
+            ["zulu", t("time.zulu")],
+            ["local", t("time.local")],
           ] as const
         ).map(([key, label]) => (
           <Button
@@ -112,20 +114,8 @@ export function TimeModeToggle() {
         ))}
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Advisories are timed in <strong className="font-medium text-foreground">Zulu</strong> — one clock (UTC) used
-        worldwide, so a bulletin means the same instant wherever it is read. A trailing{" "}
-        <span className="font-mono">Z</span> marks it.
-        {mode === "local" ? (
-          <>
-            {" "}
-            Times are shown in <span className="font-medium text-foreground">{zone}</span>.
-          </>
-        ) : (
-          <>
-            {" "}
-            Switch to &ldquo;My time&rdquo; for {zone}. Either way, hovering a time shows the other.
-          </>
-        )}
+        {t("time.explain")}{" "}
+        {mode === "local" ? t("time.showingLocal", { zone }) : t("time.switchHint", { zone })}
       </p>
     </div>
   );

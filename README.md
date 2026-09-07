@@ -270,7 +270,25 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
     the sidebar is closed on a phone and collapsed on a laptop. It starts
     collapsed below 640px, where it would otherwise take 40% of the width.
 
-14. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
+14. **English and Indonesian** — every interface string is translated, with the
+    locale taken from the browser and remembered. A plain typed dictionary in
+    `lib/i18n.ts`, no i18n library: two locales, Indonesian has no plural
+    categories, dates already go through `Intl`, and next-intl would add a
+    dependency, middleware and a routing scheme to do less. Tests assert the
+    two catalogues hold the same keys, the same placeholders, and no string
+    left identical by copy-paste.
+
+    The raw VAA bulletin and the NOTAM text are deliberately *not* translated:
+    they are source documents an operator may need to quote verbatim.
+
+15. **First-run onboarding** — one dialog, shown once, explaining the thing the
+    map cannot: that three independent official sources are on screen, each
+    answering a different question, and that they can disagree. It also
+    explains what a flight level is, since the colour bands mean nothing
+    without that. Carries the language switch, so a first-time Indonesian
+    reader can change it before reading anything else.
+
+16. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
    detail card, and a legend; a slide-over panel below `lg`; light/dark theme
    with a toggle in the header.
 
@@ -327,7 +345,7 @@ flight-level bands.
 
 ## What was verified
 
-- `npm test` — 79 checks over the VAA parser, the morph math, the wind grid,
+- `npm test` — 86 checks over the VAA parser, the morph math, the wind grid,
   the Darwin feed's file selection, and DTG parsing across month and year
   boundaries, on `node:test` + `node:assert` with no test framework.
 - `npm run build` and `tsc --noEmit` complete cleanly; `eslint .` is clean.
@@ -408,6 +426,8 @@ components/
   credits.tsx            author and data-source attribution
   time-mode.tsx          Zulu/local preference, explainer, <Dtg>
   map-legend.tsx         the colour bands, fixed to the map
+  i18n.tsx               locale context, t(), language switch
+  onboarding.tsx         first-run explanation of the three sources
   airport-impact.tsx     affected-airport list + NOTAM lookup
   wind-layer.tsx         the wind field as one SVG layer
   theme-provider.tsx     next-themes wiring
@@ -420,6 +440,7 @@ lib/
   darwin.ts              BOM FTP client + product-file selection
   impact.ts              which airports sit under a cloud, and how high
   notams.ts              SkyLink channel/field normalization
+  i18n.ts                EN/ID message catalogue
   notify.ts              what counts as news, for notifications
   pvmbg.ts               alert-level scrape + VAAC name matching
   logo.ts                the app mark, shared by the generated icons

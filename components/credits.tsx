@@ -4,6 +4,8 @@
 // carry a Commonwealth of Australia copyright notice, and Open-Meteo's free
 // tier is CC BY 4.0, which requires credit.
 
+import { useI18n } from "@/components/i18n";
+
 const SOURCES = [
   {
     name: "Darwin VAAC advisories",
@@ -38,10 +40,11 @@ const SOURCES = [
 ];
 
 export function Credits() {
+  const { t } = useI18n();
   return (
     <div className="space-y-3 text-xs">
       <p className="text-muted-foreground">
-        Built by{" "}
+        {t("credits.builtBy")}{" "}
         <a
           href="https://github.com/mzmznasipadang"
           className="rounded-sm font-medium text-foreground underline underline-offset-2 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
@@ -53,7 +56,7 @@ export function Credits() {
           href="https://github.com/mzmznasipadang/ash-map"
           className="rounded-sm underline underline-offset-2 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
         >
-          Source on GitHub
+          {t("credits.source")}
         </a>
         .
       </p>
@@ -77,9 +80,7 @@ export function Credits() {
       </dl>
 
       <p className="leading-relaxed text-muted-foreground">
-        Advisory data is reproduced as published. This is not an official
-        aviation product: for flight planning, use the advisories and NOTAMs
-        issued by the responsible VAAC and your national AIS.
+{t("credits.notOfficial")}
       </p>
     </div>
   );

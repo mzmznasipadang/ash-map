@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DarwinFeed, type DarwinFeedState, type FeedItem } from "@/components/darwin-feed";
 import { RawBulletin } from "@/components/raw-bulletin";
 import { Credits } from "@/components/credits";
+import { useI18n } from "@/components/i18n";
 import { Dtg, TimeModeIcon, TimeModeToggle } from "@/components/time-mode";
 import { AirportImpactIcon, AirportImpactList } from "@/components/airport-impact";
 import type { AirportImpact } from "@/lib/impact";
@@ -124,12 +125,13 @@ export function AdvisoryPanel({
   // This panel is mounted twice — once in the sidebar, once in the slide-over —
   // so fixed ids would collide and every `htmlFor` would resolve to whichever
   // copy is hidden. useId gives each instance its own namespace.
+  const { t } = useI18n();
   const uid = useId();
   const id = (name: string) => `${uid}-${name}`;
 
   return (
     <div className="divide-y px-4 pb-8">
-      <Section title="Darwin VAAC feed" defaultOpen={false} icon={<Rss className="size-4 text-muted-foreground" aria-hidden="true" />}>
+      <Section title={t("section.feed")} defaultOpen={false} icon={<Rss className="size-4 text-muted-foreground" aria-hidden="true" />}>
         <DarwinFeed state={feed} onSelect={onSelectFeedItem} alerts={alertsList} />
       </Section>
       {advisory && (
@@ -138,7 +140,7 @@ export function AdvisoryPanel({
             <CardHeader className="px-4">
               <CardTitle className="flex items-center gap-2 text-base">
                 <MapPin className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <h2 className="min-w-0 truncate">{advisory.volcano ?? "Unknown volcano"}</h2>
+                <h2 className="min-w-0 truncate">{advisory.volcano ?? t("card.unknownVolcano")}</h2>
               </CardTitle>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {advisory.vaac && <Badge variant="secondary">{advisory.vaac} VAAC</Badge>}
@@ -152,7 +154,7 @@ export function AdvisoryPanel({
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-muted-foreground">
                 {advisory.dtg && (
                   <>
-                    <dt>Issued</dt>
+                    <dt>{t("card.issued")}</dt>
                     <dd className="font-mono text-foreground">
                       <Dtg value={advisory.dtg} />
                     </dd>
@@ -160,19 +162,19 @@ export function AdvisoryPanel({
                 )}
                 {advisory.area && (
                   <>
-                    <dt>Area</dt>
+                    <dt>{t("card.area")}</dt>
                     <dd className="text-foreground">{advisory.area}</dd>
                   </>
                 )}
                 {advisory.elevation && (
                   <>
-                    <dt>Summit</dt>
+                    <dt>{t("card.summit")}</dt>
                     <dd className="text-foreground">{advisory.elevation}</dd>
                   </>
                 )}
                 {advisory.nextAdvisory && (
                   <>
-                    <dt>Next</dt>
+                    <dt>{t("card.next")}</dt>
                     <dd className="text-foreground">
                       {/* The field is prose wrapped around a DTG, e.g. "NO LATER
                           THAN 20260906/1730Z", so reformat just the DTG. */}
@@ -192,7 +194,7 @@ export function AdvisoryPanel({
 
               {frames.length > 0 && (
                 <div className="space-y-1.5">
-                  <h3 className="font-medium text-foreground">Frames on the timeline</h3>
+                  <h3 className="font-medium text-foreground">{t("card.framesOnTimeline")}</h3>
                   <ul className="space-y-1 text-muted-foreground">
                     {frames.map((f) => (
                       <li key={f} className="flex items-center justify-between gap-2 font-mono">
@@ -203,7 +205,7 @@ export function AdvisoryPanel({
                   </ul>
                   {frames.length > 1 && (
                     <p className="pt-1 leading-relaxed text-muted-foreground">
-                      Press play on the map to watch the cloud drift between them.
+{t("card.pressPlay")}
                     </p>
                   )}
                 </div>
@@ -212,7 +214,7 @@ export function AdvisoryPanel({
               {advisory.remark && (
                 <details className="group">
                   <summary className="flex min-h-6 cursor-pointer items-center font-medium text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none">
-                    Remarks
+                    {t("card.remarks")}
                   </summary>
                   <p className="pt-1.5 leading-relaxed text-muted-foreground">{advisory.remark}</p>
                 </details>
@@ -222,12 +224,12 @@ export function AdvisoryPanel({
         </div>
       )}
       {plotted.length > 0 && (
-      <Section title="Airports under ash" icon={<AirportImpactIcon />}>
+      <Section title={t("section.airports")} icon={<AirportImpactIcon />}>
           <AirportImpactList impacts={impacts} />
         </Section>
       )}
       <Section
-        title="Alerts"
+        title={t("section.alerts")}
         defaultOpen={false}
         icon={<Bell className="size-4 text-muted-foreground" aria-hidden="true" />}
       >
@@ -235,27 +237,27 @@ export function AdvisoryPanel({
       </Section>
 
       <Section
-        title="Volcano alert levels"
+        title={t("section.levels")}
         defaultOpen={false}
         icon={<Mountain className="size-4 text-muted-foreground" aria-hidden="true" />}
       >
         <p className="text-xs leading-relaxed text-muted-foreground">
           {alertCount > 0
-            ? `${alertCount} Indonesian volcanoes are on PVMBG's watch list. Levels run I Normal, II Waspada, III Siaga, IV Awas; Level IV means evacuation is under way. The level shown on an advisory is the volcano's own status, which is separate from whether its ash is currently in the air.`
-            : "PVMBG alert levels are unavailable right now."}
+            ? t("levels.blurb", { count: alertCount })
+            : t("levels.unavailable")}
         </p>
       </Section>
 
-      <Section title="Wind overlay" icon={<Wind className="size-4 text-muted-foreground" aria-hidden="true" />}>
+      <Section title={t("section.wind")} icon={<Wind className="size-4 text-muted-foreground" aria-hidden="true" />}>
         <div className="flex items-center justify-between gap-2">
           <Label htmlFor={id("wind-toggle")} className="font-normal">
-            Show vectors
-            <span className="block text-xs text-muted-foreground">Open-Meteo, live</span>
+            {t("wind.show")}
+            <span className="block text-xs text-muted-foreground">{t("wind.live")}</span>
           </Label>
           <Switch id={id("wind-toggle")} checked={showWind} onCheckedChange={onShowWind} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor={id("wind-level")}>Pressure level</Label>
+          <Label htmlFor={id("wind-level")}>{t("wind.level")}</Label>
           <Select value={windLevel} onValueChange={onWindLevel} disabled={!showWind}>
             <SelectTrigger id={id("wind-level")} className="w-full">
               <SelectValue />
@@ -271,7 +273,7 @@ export function AdvisoryPanel({
         </div>
       </Section>
       {plotted.length > 0 && (
-      <Section title="Layers on the map" icon={<Layers className="size-4 text-muted-foreground" aria-hidden="true" />}>
+      <Section title={t("section.layers")} icon={<Layers className="size-4 text-muted-foreground" aria-hidden="true" />}>
           <ul className="space-y-1">
             {plotted.map((item) => {
               const isHidden = hidden.has(item.id);
@@ -295,7 +297,7 @@ export function AdvisoryPanel({
                     size="icon"
                     onClick={() => onToggleLayer(item.id)}
                     aria-pressed={!isHidden}
-                    aria-label={`${isHidden ? "Show" : "Hide"} ${item.advisory.volcano ?? "this advisory"} on the map`}
+                    aria-label={t(isHidden ? "layers.show" : "layers.hide", { name: item.advisory.volcano ?? "advisory" })}
                     className="size-7 shrink-0"
                   >
                     {isHidden ? (
@@ -310,7 +312,7 @@ export function AdvisoryPanel({
           </ul>
 
           <div className="space-y-2 border-t pt-3">
-            <Label htmlFor={id("min-fl")}>Hide ash below</Label>
+            <Label htmlFor={id("min-fl")}>{t("layers.hideBelow")}</Label>
             <Select value={String(minFlightLevel)} onValueChange={(v) => onMinFlightLevel(Number(v))}>
               <SelectTrigger id={id("min-fl")} className="w-full">
                 <SelectValue />
@@ -318,24 +320,24 @@ export function AdvisoryPanel({
               <SelectContent>
                 {[0, 100, 200, 300, 450].map((fl) => (
                   <SelectItem key={fl} value={String(fl)}>
-                    {fl === 0 ? "Show all levels" : `FL${fl} and above`}
+                    {fl === 0 ? t("layers.showAll") : t("layers.andAbove", { fl })}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Cruising traffic sits near FL350, so filtering low ash leaves what matters at altitude.
+{t("layers.cruising")}
             </p>
           </div>
         </Section>
       )}
-      <Section title="Times &amp; time zone" defaultOpen={false} icon={<TimeModeIcon />}>
+      <Section title={t("section.time")} defaultOpen={false} icon={<TimeModeIcon />}>
         <TimeModeToggle />
       </Section>
-      <Section title="Legend" icon={<span aria-hidden="true" className="size-4 rounded-sm bg-gradient-to-br from-sky-400 to-purple-600" />}>
+      <Section title={t("section.legend")} icon={<span aria-hidden="true" className="size-4 rounded-sm bg-gradient-to-br from-sky-400 to-purple-600" />}>
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            Ash polygon — advisory flight level. FL is hundreds of feet, so FL300 is 30,000 ft.
+{t("legend.ashBand")}
           </p>
           <div className="grid grid-cols-2 gap-1.5">
             {FL_BANDS.map((b) => (
@@ -354,7 +356,7 @@ export function AdvisoryPanel({
           </div>
         </div>
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Arrow — wind speed, pointing downwind</p>
+          <p className="text-xs text-muted-foreground">{t("legend.windBand")}</p>
           <div className="grid grid-cols-2 gap-1.5">
             {WIND_BANDS.map((b) => (
               <div key={b.label} className="flex items-center gap-2 text-xs">
@@ -368,12 +370,12 @@ export function AdvisoryPanel({
         </div>
       </Section>
       <Section
-        title="Advisory source"
+        title={t("section.source")}
         defaultOpen={false}
         icon={<Upload className="size-4 text-muted-foreground" aria-hidden="true" />}
       >
         <div className="space-y-2">
-          <Label htmlFor={id("vaac-sample")}>Official VAAC URL</Label>
+          <Label htmlFor={id("vaac-sample")}>{t("source.url")}</Label>
           <Select value={urlInput} onValueChange={onUrlInput}>
             <SelectTrigger id={id("vaac-sample")} className="w-full">
               <SelectValue placeholder="Pick a source" />
@@ -394,16 +396,16 @@ export function AdvisoryPanel({
           />
           <Button onClick={onLoadUrl} disabled={loading} aria-busy={loading} className="w-full">
             {loading && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-            Fetch advisory
+            {t("source.fetch")}
           </Button>
         </div>
 
         <Separator />
 
         <div className="space-y-2">
-          <Label htmlFor={id("vaa-text")}>Or paste raw VAA text</Label>
+          <Label htmlFor={id("vaa-text")}>{t("source.paste")}</Label>
           <p className="text-xs text-muted-foreground">
-            Works for any VAAC — Darwin, Tokyo, London, Toulouse — the ICAO format is identical.
+{t("source.pasteHint")}
           </p>
           <Textarea
             id={id("vaa-text")}
@@ -419,10 +421,10 @@ export function AdvisoryPanel({
               onClick={() => onParseText(textInput)}
               disabled={loading || !textInput.trim()}
             >
-              Parse
+              {t("source.parse")}
             </Button>
             <Button variant="outline" className="flex-1" onClick={onLoadSample} disabled={loading}>
-              Krakatau sample
+              {t("source.sample")}
             </Button>
           </div>
         </div>
@@ -435,13 +437,13 @@ export function AdvisoryPanel({
 
         {advisory?.raw && (
           <div className="space-y-2 border-t pt-3">
-            <p className="text-xs font-medium">Raw bulletin</p>
+            <p className="text-xs font-medium">{t("source.raw")}</p>
             <RawBulletin raw={advisory.raw} />
           </div>
         )}
       </Section>
       <Section
-        title="About &amp; sources"
+        title={t("section.about")}
         defaultOpen={false}
         icon={<Info className="size-4 text-muted-foreground" aria-hidden="true" />}
       >
@@ -450,7 +452,7 @@ export function AdvisoryPanel({
 
       <div className="flex items-baseline justify-between gap-2 pt-4 text-xs">
         <p className="text-muted-foreground">
-          Built by{" "}
+          {t("credits.builtBy")}{" "}
           <a
             href="https://github.com/mzmznasipadang"
             className="rounded-sm font-medium text-foreground underline underline-offset-2 hover:opacity-80 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
@@ -462,7 +464,7 @@ export function AdvisoryPanel({
           href="https://github.com/mzmznasipadang/ash-map"
           className="rounded-sm shrink-0 text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
         >
-          Source
+          {t("credits.source")}
         </a>
       </div>
     </div>

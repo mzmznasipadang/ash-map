@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { relativeToNow } from "@/lib/dtg";
+import { useI18n } from "@/components/i18n";
 
 type Impact = AirportImpact & { volcanoes?: string[] };
 
@@ -45,6 +46,7 @@ type NotamState =
   | { status: "ok"; count: number; ashRelated: number; closures: number; notams: NotamItem[] };
 
 function NotamPanel({ icao }: { icao: string }) {
+  const { t } = useI18n();
   const [state, setState] = useState<NotamState>({ status: "idle" });
 
   const load = async () => {
@@ -74,7 +76,7 @@ function NotamPanel({ icao }: { icao: string }) {
     return (
       <Button variant="outline" size="sm" onClick={load} className="h-7 w-full gap-1.5 text-xs">
         <FileWarning className="size-3.5" aria-hidden="true" />
-        Check published NOTAMs
+        {t("airports.checkNotams")}
       </Button>
     );
   }
@@ -83,7 +85,7 @@ function NotamPanel({ icao }: { icao: string }) {
     return (
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
         <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-        Reading NOTAMs for {icao}…
+        {t("airports.reading", { icao })}
       </p>
     );
   }
@@ -98,14 +100,14 @@ function NotamPanel({ icao }: { icao: string }) {
         <p className="text-xs text-destructive">{state.message}</p>
         {state.hint && <p className="text-xs leading-relaxed text-muted-foreground">{state.hint}</p>}
         <Button variant="ghost" size="sm" onClick={load} className="h-6 text-xs">
-          Retry
+          {t("airports.retry")}
         </Button>
       </div>
     );
   }
 
   if (state.count === 0) {
-    return <p className="text-xs text-muted-foreground">No active NOTAMs returned for {icao}.</p>;
+    return <p className="text-xs text-muted-foreground">{t("airports.noNotams", { icao })}</p>;
   }
 
   // Ash notices and closures are the reason to look; the rest is counted, not
@@ -117,16 +119,16 @@ function NotamPanel({ icao }: { icao: string }) {
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1.5">
         <Badge variant="outline" className="text-[10px]">
-          {state.count} active
+          {t("airports.active", { count: state.count })}
         </Badge>
         {state.ashRelated > 0 && (
           <Badge variant="destructive" className="text-[10px]">
-            {state.ashRelated} volcanic ash
+{t("airports.ashNotams", { count: state.ashRelated })}
           </Badge>
         )}
         {state.closures > 0 && (
           <Badge variant="secondary" className="text-[10px]">
-            {state.closures} closure{state.closures === 1 ? "" : "s"}
+{t("airports.closures", { count: state.closures })}
           </Badge>
         )}
       </div>
@@ -143,12 +145,12 @@ function NotamPanel({ icao }: { icao: string }) {
               <span className="font-mono text-[10px] text-muted-foreground">{n.id}</span>
               {n.ashRelated && (
                 <Badge variant="destructive" className="text-[10px]">
-                  Volcanic ash
+                  {t("airports.volcanicAsh")}
                 </Badge>
               )}
               {n.closure && !n.ashRelated && (
                 <Badge variant="secondary" className="text-[10px]">
-                  Closure
+                  {t("airports.closure")}
                 </Badge>
               )}
             </p>
@@ -161,8 +163,8 @@ function NotamPanel({ icao }: { icao: string }) {
                       new Date(n.expiration)
                     )}${n.expirationEstimated ? ", estimated" : ""})`
                   : n.permanent
-                    ? "permanent"
-                    : "until further notice"}
+                    ? t("airports.permanent")
+                    : t("airports.untilFurther")}
               </p>
             )}
           </li>
@@ -181,6 +183,7 @@ function NotamPanel({ icao }: { icao: string }) {
 }
 
 function ImpactRow({ impact }: { impact: Impact }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const { airport, now, anySurface, maxCeiling, firstFrame } = impact;
 
@@ -201,11 +204,11 @@ function ImpactRow({ impact }: { impact: Impact }) {
               variant={anySurface ? "destructive" : "secondary"}
               className="shrink-0 text-[10px] whitespace-nowrap"
             >
-              {anySurface ? "To surface" : "Aloft only"}
+              {anySurface ? t("airports.badgeSurface") : t("airports.badgeAloft")}
             </Badge>
           </span>
           <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-xs text-muted-foreground">
-            <span className={now ? "font-medium text-foreground" : ""}>{now ? "now" : firstFrame}</span>
+            <span className={now ? "font-medium text-foreground" : ""}>{now ? t("airports.now") : firstFrame}</span>
             <span aria-hidden="true">·</span>
             <span>to FL{maxCeiling}</span>
             <span aria-hidden="true">·</span>
@@ -243,13 +246,13 @@ function ImpactRow({ impact }: { impact: Impact }) {
 }
 
 export function AirportImpactList({ impacts }: { impacts: Impact[] }) {
+  const { t } = useI18n();
   const [showAll, setShowAll] = useState(false);
 
   if (impacts.length === 0) {
     return (
       <p className="text-xs leading-relaxed text-muted-foreground">
-        No airport in the dataset falls inside a plotted ash polygon, on any frame of the advisories currently on the
-        map. That is the common case: most clouds drift over water.
+{t("airports.none")}
       </p>
     );
   }
@@ -262,10 +265,10 @@ export function AirportImpactList({ impacts }: { impacts: Impact[] }) {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-1.5">
         <Badge variant={nowCount ? "destructive" : "secondary"}>
-          {nowCount} affected now
+{t("airports.affectedNow", { count: nowCount })}
         </Badge>
-        <Badge variant="outline">{impacts.length - nowCount} forecast</Badge>
-        {surfaceCount > 0 && <Badge variant="outline">{surfaceCount} to surface</Badge>}
+        <Badge variant="outline">{t("airports.forecast", { count: impacts.length - nowCount })}</Badge>
+        {surfaceCount > 0 && <Badge variant="outline">{t("airports.toSurface", { count: surfaceCount })}</Badge>}
       </div>
 
       <ul className="space-y-1.5">
@@ -276,15 +279,14 @@ export function AirportImpactList({ impacts }: { impacts: Impact[] }) {
 
       {impacts.length > shown.length && (
         <Button variant="ghost" size="sm" onClick={() => setShowAll(true)} className="h-7 w-full text-xs">
-          Show {impacts.length - shown.length} more
+          {t("airports.showMore", { count: impacts.length - shown.length })}
         </Button>
       )}
 
       <Separator />
 
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Geometry only: an airport is listed when it falls inside an advisory polygon. Whether an aerodrome is actually
-        closed is decided by its authority and published as a NOTAM or ASHTAM, which this does not read.
+{t("airports.caveat")}
       </p>
     </div>
   );

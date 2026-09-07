@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dtg } from "@/components/time-mode";
 import { AlertLevelBadge } from "@/components/alert-level";
 import { findAlert, type VolcanoAlert } from "@/lib/pvmbg";
+import { useI18n } from "@/components/i18n";
 import { Label } from "@/components/ui/label";
 
 /** An ISO instant as a full DTG, so <Dtg> can render it in the chosen mode. */
@@ -263,6 +264,7 @@ export function DarwinFeed({
   onSelect: (item: FeedItem) => void;
   alerts?: VolcanoAlert[];
 }) {
+  const { t } = useI18n();
   const {
     items,
     total,
@@ -285,8 +287,8 @@ export function DarwinFeed({
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          Newest Darwin VAAC bulletins, straight from BOM&apos;s public FTP.
-          {intervalMs > 0 ? ` Checked every ${intervalLabel}.` : " Auto-refresh is off."}
+          {t("feed.blurb")}{" "}
+          {intervalMs > 0 ? t("feed.every", { interval: intervalLabel }) : t("feed.off")}
         </p>
         <Button
           variant="outline"
@@ -301,14 +303,14 @@ export function DarwinFeed({
           ) : (
             <RefreshCw className="size-3.5" aria-hidden="true" />
           )}
-          Refresh
+          {t("feed.refresh")}
         </Button>
       </div>
 
       <div className="flex items-center gap-1.5">
         {[
-          { key: "indonesia", label: "Indonesia" },
-          { key: null, label: "All of Darwin" },
+          { key: "indonesia", label: t("feed.areaIndonesia") },
+          { key: null, label: t("feed.areaAll") },
         ].map((opt) => (
           <Button
             key={opt.label}
@@ -326,10 +328,10 @@ export function DarwinFeed({
       {unseen.size > 0 && (
         <div className="flex items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
           <p className="text-xs font-medium" role="status">
-            {unseen.size} new bulletin{unseen.size > 1 ? "s" : ""} since you last looked
+{t("feed.newCount", { count: unseen.size })}
           </p>
           <Button variant="ghost" size="sm" onClick={acknowledge} className="h-6 shrink-0 text-xs">
-            Mark seen
+            {t("feed.markSeen")}
           </Button>
         </div>
       )}
@@ -340,21 +342,14 @@ export function DarwinFeed({
         </p>
       )}
       {stale && !error && (
-        <p className="text-xs text-muted-foreground">Showing the last successful fetch; BOM did not respond.</p>
+        <p className="text-xs text-muted-foreground">{t("feed.stale")}</p>
       )}
 
-      {items === null && loading && <p className="text-xs text-muted-foreground">Contacting ftp.bom.gov.au…</p>}
+      {items === null && loading && <p className="text-xs text-muted-foreground">{t("feed.contacting")}</p>}
 
       {items?.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          {hidden > 0 ? (
-            <>
-              None of the {total} bulletins on the feed are in Indonesia. Darwin&apos;s area also covers Papua New
-              Guinea, East Timor and the south Pacific — switch to &ldquo;All of Darwin&rdquo; to see them.
-            </>
-          ) : (
-            <>No Darwin bulletins on the feed. Darwin issues these only while a volcano in its area is active.</>
-          )}
+{hidden > 0 ? t("feed.noneIndonesia", { total }) : t("feed.none")}
         </p>
       )}
 
@@ -381,11 +376,11 @@ export function DarwinFeed({
                     />
                     {drawable ? (
                       <Badge variant="secondary" className="shrink-0 text-[10px]">
-                        {item.frames.length} frame{item.frames.length > 1 ? "s" : ""}
+                        {t("feed.frames", { count: item.frames.length })}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="shrink-0 text-[10px]">
-                        no cloud
+                        {t("feed.noCloud")}
                       </Badge>
                     )}
                   </span>
@@ -402,7 +397,7 @@ export function DarwinFeed({
 
       <div className="space-y-2 border-t pt-3">
         <Label htmlFor="refresh-interval" className="text-xs">
-          Auto-refresh
+          {t("feed.autoRefresh")}
         </Label>
         <div className="flex flex-wrap items-center gap-1" id="refresh-interval" role="group">
           {REFRESH_INTERVALS.map((opt) => (
@@ -423,7 +418,7 @@ export function DarwinFeed({
       <div className="flex items-center justify-between gap-2 pt-1">
         {fetchedAt ? (
           <p className="text-xs text-muted-foreground">
-            Checked <Dtg value={toDtg(fetchedAt)} />
+            {t("feed.checked")} <Dtg value={toDtg(fetchedAt)} />
           </p>
         ) : (
           <span />
@@ -432,7 +427,7 @@ export function DarwinFeed({
           href={`/api/darwin/geojson?${new URLSearchParams({ limit: "5", download: "1", ...(area ? { area } : {}) })}`}
           className="rounded-sm text-xs underline underline-offset-2 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
         >
-          Download GeoJSON
+          {t("feed.download")}
         </a>
       </div>
     </div>
