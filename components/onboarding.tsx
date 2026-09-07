@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Bell, Mountain, PlaneLanding, Ruler } from "lucide-react";
 
+import Link from "next/link";
 import { useI18n } from "@/components/i18n";
 import { LOCALES } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ function alreadySeen(): boolean {
  * meaningless without it.
  */
 export function Onboarding() {
-  const { t, locale, setLocale } = useI18n();
+  const { t, locale } = useI18n();
   // AshMap is ssr:false and this renders beside it, so reading storage in the
   // initializer cannot cause a hydration mismatch.
   const [open, setOpen] = useState(() => (typeof window === "undefined" ? false : !alreadySeen()));
@@ -59,13 +60,14 @@ export function Onboarding() {
           {LOCALES.map((l) => (
             <Button
               key={l.code}
+              asChild
               variant={locale === l.code ? "secondary" : "ghost"}
               size="sm"
-              aria-pressed={locale === l.code}
-              onClick={() => setLocale(l.code)}
               className="h-7 text-xs"
             >
-              {l.native}
+              <Link href={`/${l.code}`} hrefLang={l.code} aria-current={locale === l.code ? "page" : undefined}>
+                {l.native}
+              </Link>
             </Button>
           ))}
         </div>

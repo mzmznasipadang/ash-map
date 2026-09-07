@@ -1,11 +1,11 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Languages } from "lucide-react";
 
 import {
-  detectLocale,
-  isLocale,
   LOCALES,
   translate,
   translateCount,
@@ -14,11 +14,8 @@ import {
 } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 
-const KEY = "ash-map:locale";
-
 type Ctx = {
   locale: Locale;
-  setLocale: (l: Locale) => void;
   t: (key: MessageKey, params?: Record<string, string | number>) => string;
   /** Plural-aware, for the counted strings. */
   tc: (base: Parameters<typeof translateCount>[1], count: number) => string;
@@ -26,50 +23,29 @@ type Ctx = {
 
 const I18nContext = createContext<Ctx>({
   locale: "en",
-  setLocale: () => {},
   t: (k) => translate("en", k),
   tc: (b, c) => translateCount("en", b, c),
 });
 
-function stored(): Locale | null {
-  try {
-    const v = localStorage.getItem(KEY);
-    return isLocale(v) ? v : null;
-  } catch {
-    return null;
-  }
-}
-
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  // The server has no navigator and no localStorage, so it renders English and
-  // the client corrects it on first paint. Adjusting during render rather than
-  // in an effect keeps that to one pass.
-  const [locale, setLocaleState] = useState<Locale>("en");
-  const [resolved, setResolved] = useState(false);
-  if (!resolved && typeof window !== "undefined") {
-    setResolved(true);
-    const next = stored() ?? detectLocale(navigator.languages ?? [navigator.language]);
-    if (next !== locale) setLocaleState(next);
-  }
-
-  const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next);
-    try {
-      localStorage.setItem(KEY, next);
-    } catch {
-      // private window; the choice just will not persist
-    }
-    if (typeof document !== "undefined") document.documentElement.lang = next;
-  }, []);
+/**
+ * The locale comes from the route (/en, /id), so a URL is shareable and each
+ * language has an address of its own for hreflang. That also removes the old
+ * conflict where a stored preference could disagree with what the URL said.
+ */
+export function I18nProvider({ locale, children }: { locale: Locale; children: React.ReactNode }) {
+  // The root layout renders one <html>, so it cannot vary lang per route.
+  // Correct it here; the app needs JavaScript to draw anything anyway.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const value = useMemo<Ctx>(
     () => ({
       locale,
-      setLocale,
       t: (key, params) => translate(locale, key, params),
       tc: (base, count) => translateCount(locale, base, count),
     }),
-    [locale, setLocale]
+    [locale]
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
@@ -79,21 +55,27 @@ export function useI18n() {
   return useContext(I18nContext);
 }
 
-/** Compact two-way switch; there are only two locales. */
+/**
+ * A link, not a state toggle: each language is a real URL, so switching should
+ * change the address and be shareable and indexable.
+ */
 export function LocaleToggle({ className }: { className?: string }) {
-  const { locale, setLocale, t } = useI18n();
+  const { locale, t } = useI18n();
+  const pathname = usePathname();
   const next = locale === "en" ? "id" : "en";
+  const href = pathname?.replace(/^\/(en|id)\b/, `/${next}`) ?? `/${next}`;
 
   return (
     <Button
+      asChild
       variant="ghost"
       size="sm"
-      onClick={() => setLocale(next)}
-      aria-label={`${t("lang.label")}: ${LOCALES.find((l) => l.code === next)?.native}`}
       className={`h-8 gap-1.5 px-2 text-xs font-medium ${className ?? ""}`}
     >
-      <Languages className="size-4" aria-hidden="true" />
-      {locale.toUpperCase()}
+      <Link href={href} hrefLang={next} aria-label={`${t("lang.label")}: ${LOCALES.find((l) => l.code === next)?.native}`}>
+        <Languages className="size-4" aria-hidden="true" />
+        {locale.toUpperCase()}
+      </Link>
     </Button>
   );
 }

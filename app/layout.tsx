@@ -23,9 +23,6 @@ export const metadata: Metadata = {
   // link-preview crawlers need.
   metadataBase: new URL(SITE_URL),
   title: { default: `${TITLE} — ${SITE_TAGLINE}`, template: `%s · ${TITLE}` },
-  // One route, so the canonical is simply the root — but stating it stops a
-  // query string (?area=, a share link) being indexed as a separate page.
-  alternates: { canonical: "/" },
   description: DESCRIPTION,
   applicationName: TITLE,
   authors: [AUTHOR],

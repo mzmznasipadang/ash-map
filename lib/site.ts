@@ -33,7 +33,7 @@ export function jsonLd() {
         "@id": `${SITE_URL}/#app`,
         name: SITE_NAME,
         alternateName: "AshMap — Volcanic Ash & Wind Map",
-        url: SITE_URL,
+        url: `${SITE_URL}/en`,
         description: SITE_DESCRIPTION,
         applicationCategory: "https://schema.org/BrowserApplication",
         operatingSystem: "Any (web browser)",
@@ -59,7 +59,7 @@ export function jsonLd() {
         name: "Darwin VAAC volcanic ash advisories, plotted",
         description:
           "ICAO volcanic ash advisories from the Darwin VAAC, parsed into GeoJSON polygons by flight-level band, with volcano alert levels and affected aerodromes.",
-        url: SITE_URL,
+        url: `${SITE_URL}/en`,
         license: "https://opensource.org/licenses/MIT",
         isAccessibleForFree: true,
         keywords: ["volcanic ash", "VAAC", "aviation weather", "Indonesia", "flight level", "NOTAM", "GeoJSON"],

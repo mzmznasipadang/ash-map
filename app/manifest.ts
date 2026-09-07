@@ -10,7 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: `${SITE_NAME} — ${SITE_TAGLINE}`,
     short_name: SITE_NAME,
     description: SITE_DESCRIPTION,
-    start_url: "/",
+    start_url: "/en",
     display: "standalone",
     orientation: "any",
     background_color: BRAND_NAVY,

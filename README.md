@@ -333,6 +333,13 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
     what the app is and points at the GeoJSON endpoint, which needs no
     JavaScript at all.
 
+    Each language has its own URL — `/en` and `/id` — so `hreflang` has
+    something real to point at, and a shared link keeps the language it was
+    read in. Each declares itself canonical and names the other, plus
+    `x-default`. `/` is a redirect chosen from `Accept-Language`, not a third
+    copy of the app: serving the same content at three addresses would have the
+    pages competing with each other.
+
     `robots.txt` disallows the API routes. They open FTP sessions and spend a
     metered NOTAM quota, so a crawl should not be paying for them — but the
     GeoJSON export stays reachable to anyone following the link.
@@ -458,6 +465,9 @@ and NOTAMs issued by the responsible VAAC and your national AIS.
 app/
   page.tsx               app shell + state (map, sidebar, slide-over)
   layout.tsx             theme provider
+  en/page.tsx            the app in English
+  id/page.tsx            the app in Indonesian
+  page.tsx               redirects "/" by Accept-Language
   robots.ts              crawler rules; the API routes are disallowed
   sitemap.ts             one route, hourly
   manifest.ts            installable web app
@@ -479,6 +489,7 @@ components/
   time-mode.tsx          Zulu/local preference, explainer, <Dtg>
   map-legend.tsx         the colour bands, fixed to the map
   sources-health.tsx     source health panel + header indicator
+  ash-map-app.tsx        the app shell the locale routes render
   i18n.tsx               locale context, t(), language switch
   onboarding.tsx         first-run explanation of the three sources
   airport-impact.tsx     affected-airport list + NOTAM lookup
@@ -495,6 +506,7 @@ lib/
   notams.ts              SkyLink channel/field normalization
   ash-text.ts            the ash sentence, built per locale
   health.ts              per-source trust assessment
+  locale-route.ts        per-locale title, canonical and hreflang
   site.ts                canonical facts + JSON-LD
   i18n.ts                EN/ID message catalogue
   notify.ts              what counts as news, for notifications
