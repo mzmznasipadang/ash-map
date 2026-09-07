@@ -9,6 +9,7 @@ import {
   inferChannel,
   normalizeNotam,
   notamTimeToIso,
+  parseNotamTime,
   rankNotams,
 } from "./notams.ts";
 
@@ -42,9 +43,43 @@ test("NOTAM times are YYYYMMDDHHmm in UTC, not ISO", () => {
   assert.equal(notamTimeToIso("202609070128"), "2026-09-07T01:28:00.000Z");
   assert.equal(notamTimeToIso("202603241038"), "2026-03-24T10:38:00.000Z");
   assert.equal(notamTimeToIso(null), null);
-  assert.equal(notamTimeToIso("PERM"), null, "permanent NOTAMs carry no end time");
   assert.equal(notamTimeToIso("2026090701"), null, "too short to be unambiguous");
   assert.equal(notamTimeToIso("202613010000"), null, "month 13 must not roll over");
+});
+
+test("item C's EST qualifier is a real end time, not a parse failure", () => {
+  // The live Jakarta closure reads "C) 2609071100EST". An anchored digits-only
+  // pattern rejects the suffix and reports no end time for a NOTAM that has
+  // one — which is what this app did, saying "until further notice".
+  const est = parseNotamTime("202609071100EST");
+  assert.equal(est.iso, "2026-09-07T11:00:00.000Z");
+  assert.equal(est.estimated, true, "EST means the end time is an estimate");
+  assert.equal(est.permanent, false);
+
+  const plain = parseNotamTime("202608311800");
+  assert.equal(plain.iso, "2026-08-31T18:00:00.000Z");
+  assert.equal(plain.estimated, false);
+
+  assert.deepEqual(parseNotamTime("PERM"), { iso: null, estimated: false, permanent: true });
+  assert.deepEqual(parseNotamTime(null), { iso: null, estimated: false, permanent: false });
+  // Still reject genuine rubbish rather than guessing.
+  assert.equal(parseNotamTime("202613010000EST").iso, null);
+});
+
+test("normalizeNotam keeps the estimated flag on the expiry", () => {
+  const n = normalizeNotam({
+    notam_id: "A3373/2026",
+    raw: "A3373/26 NOTAMR A3368/26\nA) WIII B) 2609070128 C) 2609071100EST\nE) AD CLSD DUE TO KRAKATAU VOLCANIC ASH",
+    body: "AD CLSD DUE TO KRAKATAU VOLCANIC ASH",
+    scope: "AERODROME",
+    effective: "202609070128",
+    expiration: "202609071100EST",
+  });
+  assert.equal(n.expiration, "2026-09-07T11:00:00.000Z");
+  assert.equal(n.expirationEstimated, true);
+  assert.equal(n.permanent, false);
+  assert.equal(n.closure, true);
+  assert.equal(n.ashRelated, true);
 });
 
 // The real WIII response, field for field.
@@ -71,7 +106,7 @@ test("normalizeNotam maps the provider's real field names", () => {
   assert.equal(n.body, "AD CLSD DUE TO KRAKATAU VOLCANIC ASH");
   assert.equal(n.scope, "AERODROME");
   assert.equal(n.effective, "2026-09-07T01:28:00.000Z");
-  assert.equal(n.expiration, null, "no end time means until further notice");
+  assert.equal(n.expiration, null, "this fixture carries no end time at all");
   assert.equal(n.ashRelated, true);
   assert.equal(n.closure, true);
 });

@@ -26,7 +26,14 @@ export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
   const closed: Record<
     string,
-    { closure: boolean; ash: boolean; reason: string | null; expiration: string | null }
+    {
+      closure: boolean;
+      ash: boolean;
+      reason: string | null;
+      expiration: string | null;
+      expirationEstimated: boolean;
+      permanent: boolean;
+    }
   > = {};
 
   for (const icao of codes) {
@@ -34,7 +41,14 @@ export async function GET(req: NextRequest) {
       const res = await fetch(`${origin}/api/notams/${icao}`, { cache: "no-store" });
       if (!res.ok) continue;
       const data = (await res.json()) as {
-        notams?: { body: string; closure: boolean; ashRelated: boolean; expiration: string | null }[];
+        notams?: {
+          body: string;
+          closure: boolean;
+          ashRelated: boolean;
+          expiration: string | null;
+          expirationEstimated?: boolean;
+          permanent?: boolean;
+        }[];
       };
       const hit = data.notams?.find((n) => n.closure);
       if (hit) {
@@ -44,6 +58,8 @@ export async function GET(req: NextRequest) {
           reason: hit.body || null,
           // null means the NOTAM carries no end time: until further notice.
           expiration: hit.expiration ?? null,
+          expirationEstimated: Boolean(hit.expirationEstimated),
+          permanent: Boolean(hit.permanent),
         };
       }
     } catch {

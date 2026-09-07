@@ -31,6 +31,8 @@ type NotamItem = {
   scope: string | null;
   effective: string | null;
   expiration: string | null;
+  expirationEstimated?: boolean;
+  permanent?: boolean;
   ashRelated: boolean;
   closure: boolean;
 };
@@ -157,8 +159,10 @@ function NotamPanel({ icao }: { icao: string }) {
                 {n.expiration
                   ? `${new Date(n.expiration).toISOString().slice(0, 16).replace("T", " ")}Z (ends ${relativeToNow(
                       new Date(n.expiration)
-                    )})`
-                  : "until further notice"}
+                    )}${n.expirationEstimated ? ", estimated" : ""})`
+                  : n.permanent
+                    ? "permanent"
+                    : "until further notice"}
               </p>
             )}
           </li>

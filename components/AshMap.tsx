@@ -176,7 +176,14 @@ export default function AshMap({
   /** Airports under ash, marked so the impact list and map agree. */
   impacts?: AirportImpact[];
   /** ICAO -> closure notice, for pins whose aerodrome is actually shut. */
-  closures?: Record<string, { closure: boolean; ash: boolean; reason: string | null; expiration: string | null }>;
+  closures?: Record<string, {
+      closure: boolean;
+      ash: boolean;
+      reason: string | null;
+      expiration: string | null;
+      expirationEstimated: boolean;
+      permanent: boolean;
+    }>;
   windVectors: WindVector[];
   showWind: boolean;
   onBoundsChange: (b: Bounds) => void;
@@ -418,11 +425,13 @@ export default function AshMap({
                     <b>{shut.reason ?? "Closed (NOTAM)"}</b>
                     <br />
                     {shut.expiration
-                      ? `Closure ends ${relativeToNow(new Date(shut.expiration))} (${formatDtg(
+                      ? `Closure ends ${relativeToNow(new Date(shut.expiration))} — ${formatDtg(
                           toFullDtg(shut.expiration),
                           timeMode
-                        )})`
-                      : "No end time published — until further notice"}
+                        )}${shut.expirationEstimated ? " (estimated)" : ""}`
+                      : shut.permanent
+                        ? "Permanent"
+                        : "No end time published — until further notice"}
                   </>
                 )}
               </Tooltip>
