@@ -10,6 +10,7 @@ import { Dtg } from "@/components/time-mode";
 import { AlertLevelBadge } from "@/components/alert-level";
 import { findAlert, type VolcanoAlert } from "@/lib/pvmbg";
 import { useI18n } from "@/components/i18n";
+import { ashSentence } from "@/lib/ash-text";
 import { Label } from "@/components/ui/label";
 
 /** An ISO instant as a full DTG, so <Dtg> can render it in the chosen mode. */
@@ -264,7 +265,7 @@ export function DarwinFeed({
   onSelect: (item: FeedItem) => void;
   alerts?: VolcanoAlert[];
 }) {
-  const { t } = useI18n();
+  const { t, tc } = useI18n();
   const {
     items,
     total,
@@ -328,7 +329,7 @@ export function DarwinFeed({
       {unseen.size > 0 && (
         <div className="flex items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
           <p className="text-xs font-medium" role="status">
-{t("feed.newCount", { count: unseen.size })}
+{tc("feed.newCount", unseen.size)}
           </p>
           <Button variant="ghost" size="sm" onClick={acknowledge} className="h-6 shrink-0 text-xs">
             {t("feed.markSeen")}
@@ -376,7 +377,7 @@ export function DarwinFeed({
                     />
                     {drawable ? (
                       <Badge variant="secondary" className="shrink-0 text-[10px]">
-                        {t("feed.frames", { count: item.frames.length })}
+                        {tc("feed.frames", item.frames.length)}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="shrink-0 text-[10px]">
@@ -387,7 +388,9 @@ export function DarwinFeed({
                   <span className="font-mono text-muted-foreground">
                     <Dtg value={item.advisory.dtg} /> · #{item.advisory.advisoryNr ?? "—"}
                   </span>
-                  <span className="text-muted-foreground">{item.ash.summary}</span>
+                  {/* Built here, not taken from item.ash.summary: that string is
+                      pre-rendered English for API consumers. */}
+                  <span className="text-muted-foreground">{ashSentence(item.ash, t)}</span>
                 </button>
               </li>
             );

@@ -46,7 +46,7 @@ type NotamState =
   | { status: "ok"; count: number; ashRelated: number; closures: number; notams: NotamItem[] };
 
 function NotamPanel({ icao }: { icao: string }) {
-  const { t } = useI18n();
+  const { t, tc } = useI18n();
   const [state, setState] = useState<NotamState>({ status: "idle" });
 
   const load = async () => {
@@ -128,7 +128,7 @@ function NotamPanel({ icao }: { icao: string }) {
         )}
         {state.closures > 0 && (
           <Badge variant="secondary" className="text-[10px]">
-{t("airports.closures", { count: state.closures })}
+{tc("airports.closures", state.closures)}
           </Badge>
         )}
       </div>

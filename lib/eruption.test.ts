@@ -33,7 +33,7 @@ OBS VA CLD: SFC/FL500 ${RING} MOV SW 10KT`);
   const a = assessAsh(observed);
   assert.equal(a.status, "ash-observed");
   assert.equal(a.maxFlightLevel, 500);
-  assert.equal(a.drift, "southwest at 10 kt");
+  assert.deepEqual(a.drift, { dir: "SW", knots: 10 });
   assert.match(a.summary, /Ash observed to FL500 \(50,000 ft \/ 15,200 m\) drifting southwest at 10 kt/);
 
   const forecast = parseVaaText(`VOLCANO: KRAKATAU 262000
@@ -148,8 +148,8 @@ test("each flight-level band keeps its own drift", () => {
   assert.deepEqual(
     a.bands.map((b) => [b.flightLevel, b.ceiling, b.drift]),
     [
-      ["SFC/FL500", 500, "southwest at 10 kt"],
-      ["SFC/FL150", 150, "southeast at 5 kt"],
+      ["SFC/FL500", 500, { dir: "SW", knots: 10 }],
+      ["SFC/FL150", 150, { dir: "SE", knots: 5 }],
     ],
     "bands must be highest-first with their own headings"
   );

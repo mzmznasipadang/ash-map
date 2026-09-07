@@ -18,6 +18,8 @@ import type { WindVector } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapLegend } from "@/components/map-legend";
+import { useI18n } from "@/components/i18n";
+import { ashSentence } from "@/lib/ash-text";
 import { useTimeMode } from "@/components/time-mode";
 import { formatDtg, parseDtg, relativeToNow } from "@/lib/dtg";
 
@@ -192,6 +194,7 @@ export default function AshMap({
 }) {
   const { resolvedTheme } = useTheme();
   const { mode: timeMode } = useTimeMode();
+  const { t } = useI18n();
 
   const selected = useMemo(
     () => advisories.find((a) => a.id === selectedId) ?? advisories[0] ?? null,
@@ -456,7 +459,7 @@ export default function AshMap({
                   <br />
                   Advisory {item.advisory.advisoryNr} · {item.advisory.dtg}
                   <br />
-                  {assessAsh(item.advisory).summary}
+                  {ashSentence(assessAsh(item.advisory), t)}
                   <br />
                   <button
                     type="button"

@@ -22,12 +22,19 @@ export type AshStatus =
   | "ash-ended"
   | "unknown";
 
+/** A MOV clause, kept structured so the sentence can be built in any language. */
+export type Drift = {
+  /** Compass point as written, e.g. "SW". */
+  dir: string;
+  knots: number;
+};
+
 export type AshBand = {
   flightLevel: string;
   /** Ceiling as a number, e.g. 500 for "SFC/FL500". */
   ceiling: number;
-  /** e.g. "southwest at 10 kt", from this band's own MOV clause. */
-  drift?: string;
+  /** This band's own MOV clause. */
+  drift?: Drift;
 };
 
 export type AshAssessment = {
@@ -42,7 +49,7 @@ export type AshAssessment = {
    */
   bands: AshBand[];
   /** Drift of the highest band, for callers that only have room for one. */
-  drift?: string;
+  drift?: Drift;
   /** Plain language, for readers who do not speak FL500. */
   summary: string;
 };
@@ -54,11 +61,24 @@ const COMPASS: Record<string, string> = {
   S: "south", SW: "southwest", W: "west", NW: "northwest",
 };
 
-export function describeMovement(movement?: string): string | undefined {
+/** The MOV clause as data. */
+export function parseMovement(movement?: string): Drift | undefined {
   if (!movement) return undefined;
   const m = /MOV\s+([A-Z]{1,2})(?:\/[A-Z]{1,2})?\s+(\d+)\s?KT/.exec(movement);
   if (!m) return undefined;
-  return `${COMPASS[m[1]] ?? m[1]} at ${Number(m[2])} kt`;
+  return { dir: m[1], knots: Number(m[2]) };
+}
+
+/** English rendering, for the API's own summary string. */
+export function describeMovement(movement?: string): string | undefined {
+  const drift = parseMovement(movement);
+  if (!drift) return undefined;
+  return `${COMPASS[drift.dir] ?? drift.dir} at ${drift.knots} kt`;
+}
+
+/** English rendering of an already-parsed drift. */
+export function driftText(drift: Drift): string {
+  return `${COMPASS[drift.dir] ?? drift.dir} at ${drift.knots} kt`;
 }
 
 /** Feet for a flight level. FL is hundreds of feet, so FL500 = 50,000 ft. */
@@ -93,7 +113,7 @@ export function assessAsh(advisory: VaaAdvisory): AshAssessment {
   const byBand = new Map<string, AshBand>();
   for (const p of [...observed, ...all]) {
     const existing = byBand.get(p.flightLevel);
-    const drift = describeMovement(p.movement);
+    const drift = parseMovement(p.movement);
     if (!existing) {
       byBand.set(p.flightLevel, { flightLevel: p.flightLevel, ceiling: flightLevelCeiling(p.flightLevel), drift });
     } else if (!existing.drift && drift) {
@@ -112,7 +132,7 @@ export function assessAsh(advisory: VaaAdvisory): AshAssessment {
   else status = "unknown";
 
   const describeBand = (b: AshBand) =>
-    `${describeAltitude(b.ceiling)}${b.drift ? ` drifting ${b.drift}` : ""}`;
+    `${describeAltitude(b.ceiling)}${b.drift ? ` drifting ${driftText(b.drift)}` : ""}`;
 
   const lead =
     status === "ash-observed"

@@ -48,12 +48,14 @@ const en = {
   "feed.noneIndonesia":
     "None of the {total} bulletins on the feed are in Indonesia. Darwin's area also covers Papua New Guinea, East Timor and the south Pacific — switch to “All of Darwin” to see them.",
   "feed.none": "No Darwin bulletins on the feed. Darwin issues these only while a volcano in its area is active.",
-  "feed.newCount": "{count} new bulletin(s) since you last looked",
+  "feed.newCount.one": "{count} new bulletin since you last looked",
+  "feed.newCount.other": "{count} new bulletins since you last looked",
   "feed.markSeen": "Mark seen",
   "feed.autoRefresh": "Auto-refresh",
   "feed.checked": "Checked",
   "feed.download": "Download GeoJSON",
-  "feed.frames": "{count} frame(s)",
+  "feed.frames.one": "{count} frame",
+  "feed.frames.other": "{count} frames",
   "feed.noCloud": "no cloud",
   "feed.stale": "Showing the last successful fetch; BOM did not respond.",
 
@@ -73,7 +75,8 @@ const en = {
   "airports.noNotams": "No active NOTAMs returned for {icao}.",
   "airports.active": "{count} active",
   "airports.ashNotams": "{count} volcanic ash",
-  "airports.closures": "{count} closure(s)",
+  "airports.closures.one": "{count} closure",
+  "airports.closures.other": "{count} closures",
   "airports.volcanicAsh": "Volcanic ash",
   "airports.closure": "Closure",
   "airports.untilFurther": "until further notice",
@@ -89,6 +92,17 @@ const en = {
   "ash.none": "This advisory carries no plotted ash cloud.",
   "ash.drifting": "{height} drifting {drift}",
   "ash.bandJoin": "; and to ",
+  "ash.altitude": "FL{fl} ({feet} ft / {metres} m)",
+  "ash.altitudeUnknown": "an unreported height",
+  "ash.drift": "{dir} at {knots} kt",
+  "dir.N": "north",
+  "dir.NE": "northeast",
+  "dir.E": "east",
+  "dir.SE": "southeast",
+  "dir.S": "south",
+  "dir.SW": "southwest",
+  "dir.W": "west",
+  "dir.NW": "northwest",
 
   "wind.show": "Show vectors",
   "wind.live": "Open-Meteo, live",
@@ -209,12 +223,14 @@ const id: Record<MessageKey, string> = {
   "feed.noneIndonesia":
     "Tidak ada dari {total} buletin di umpan yang berada di Indonesia. Wilayah Darwin juga mencakup Papua Nugini, Timor Leste dan Pasifik selatan — pilih “Seluruh wilayah Darwin” untuk melihatnya.",
   "feed.none": "Tidak ada buletin Darwin di umpan. Darwin hanya menerbitkannya saat ada gunung api aktif di wilayahnya.",
-  "feed.newCount": "{count} buletin baru sejak terakhir Anda lihat",
+  "feed.newCount.one": "{count} buletin baru sejak terakhir Anda lihat",
+  "feed.newCount.other": "{count} buletin baru sejak terakhir Anda lihat",
   "feed.markSeen": "Tandai sudah dibaca",
   "feed.autoRefresh": "Penyegaran otomatis",
   "feed.checked": "Diperiksa",
   "feed.download": "Unduh GeoJSON",
-  "feed.frames": "{count} bingkai",
+  "feed.frames.one": "{count} bingkai",
+  "feed.frames.other": "{count} bingkai",
   "feed.noCloud": "tanpa awan abu",
   "feed.stale": "Menampilkan hasil pengambilan terakhir; BOM tidak merespons.",
 
@@ -234,7 +250,8 @@ const id: Record<MessageKey, string> = {
   "airports.noNotams": "Tidak ada NOTAM aktif untuk {icao}.",
   "airports.active": "{count} aktif",
   "airports.ashNotams": "{count} abu vulkanik",
-  "airports.closures": "{count} penutupan",
+  "airports.closures.one": "{count} penutupan",
+  "airports.closures.other": "{count} penutupan",
   "airports.volcanicAsh": "Abu vulkanik",
   "airports.closure": "Penutupan",
   "airports.untilFurther": "sampai pemberitahuan lebih lanjut",
@@ -250,6 +267,17 @@ const id: Record<MessageKey, string> = {
   "ash.none": "Adviso ini tidak memuat poligon awan abu.",
   "ash.drifting": "{height} bergerak ke {drift}",
   "ash.bandJoin": "; dan hingga ",
+  "ash.altitude": "FL{fl} ({feet} kaki / {metres} m)",
+  "ash.altitudeUnknown": "ketinggian tidak dilaporkan",
+  "ash.drift": "{dir} dengan {knots} kt",
+  "dir.N": "utara",
+  "dir.NE": "timur laut",
+  "dir.E": "timur",
+  "dir.SE": "tenggara",
+  "dir.S": "selatan",
+  "dir.SW": "barat daya",
+  "dir.W": "barat",
+  "dir.NW": "barat laut",
 
   "wind.show": "Tampilkan vektor",
   "wind.live": "Open-Meteo, terkini",
@@ -354,6 +382,17 @@ export function translate(locale: Locale, key: MessageKey, params?: Record<strin
   return template.replace(/\{(\w+)\}/g, (_, name: string) =>
     name in params ? String(params[name]) : `{${name}}`
   );
+}
+
+/** Plural-aware lookup for the handful of counted strings. */
+export function translateCount(
+  locale: Locale,
+  base: "feed.newCount" | "feed.frames" | "airports.closures",
+  count: number,
+  params?: Record<string, string | number>
+): string {
+  const key = `${base}.${count === 1 ? "one" : "other"}` as MessageKey;
+  return translate(locale, key, { count, ...params });
 }
 
 export function isLocale(value: unknown): value is Locale {

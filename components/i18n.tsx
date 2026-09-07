@@ -3,7 +3,15 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { Languages } from "lucide-react";
 
-import { detectLocale, isLocale, LOCALES, translate, type Locale, type MessageKey } from "@/lib/i18n";
+import {
+  detectLocale,
+  isLocale,
+  LOCALES,
+  translate,
+  translateCount,
+  type Locale,
+  type MessageKey,
+} from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 
 const KEY = "ash-map:locale";
@@ -12,9 +20,16 @@ type Ctx = {
   locale: Locale;
   setLocale: (l: Locale) => void;
   t: (key: MessageKey, params?: Record<string, string | number>) => string;
+  /** Plural-aware, for the counted strings. */
+  tc: (base: Parameters<typeof translateCount>[1], count: number) => string;
 };
 
-const I18nContext = createContext<Ctx>({ locale: "en", setLocale: () => {}, t: (k) => translate("en", k) });
+const I18nContext = createContext<Ctx>({
+  locale: "en",
+  setLocale: () => {},
+  t: (k) => translate("en", k),
+  tc: (b, c) => translateCount("en", b, c),
+});
 
 function stored(): Locale | null {
   try {
@@ -48,7 +63,12 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<Ctx>(
-    () => ({ locale, setLocale, t: (key, params) => translate(locale, key, params) }),
+    () => ({
+      locale,
+      setLocale,
+      t: (key, params) => translate(locale, key, params),
+      tc: (base, count) => translateCount(locale, base, count),
+    }),
     [locale, setLocale]
   );
 

@@ -286,6 +286,13 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
     two catalogues hold the same keys, the same placeholders, and no string
     left identical by copy-paste.
 
+    The generated sentences are localized too, which needed the data to stay
+    structured: `assessAsh` keeps a pre-rendered English `summary` for API
+    consumers, and a band's drift is `{ dir, knots }` rather than "southwest at
+    10 kt", so `lib/ash-text.ts` can build the sentence in either language. A
+    test asserts the English build still matches the API's own string, so the
+    two cannot drift apart in wording.
+
     The raw VAA bulletin and the NOTAM text are deliberately *not* translated:
     they are source documents an operator may need to quote verbatim.
 
@@ -353,7 +360,7 @@ flight-level bands.
 
 ## What was verified
 
-- `npm test` — 86 checks over the VAA parser, the morph math, the wind grid,
+- `npm test` — 93 checks over the VAA parser, the morph math, the wind grid,
   the Darwin feed's file selection, and DTG parsing across month and year
   boundaries, on `node:test` + `node:assert` with no test framework.
 - `npm run build` and `tsc --noEmit` complete cleanly; `eslint .` is clean.
@@ -448,6 +455,7 @@ lib/
   darwin.ts              BOM FTP client + product-file selection
   impact.ts              which airports sit under a cloud, and how high
   notams.ts              SkyLink channel/field normalization
+  ash-text.ts            the ash sentence, built per locale
   i18n.ts                EN/ID message catalogue
   notify.ts              what counts as news, for notifications
   pvmbg.ts               alert-level scrape + VAAC name matching

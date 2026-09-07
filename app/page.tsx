@@ -15,6 +15,7 @@ import { I18nProvider, LocaleToggle, useI18n } from "@/components/i18n";
 import { Onboarding } from "@/components/onboarding";
 import { assessAcross } from "@/lib/impact";
 import { useAlertLevels } from "@/components/alert-level";
+import { ashSentence } from "@/lib/ash-text";
 import { diffForNotification, notify, permission as notifyPermissionNow, requestPermission, type NotifiableState, type NotifyPermission } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -274,7 +275,7 @@ function MapView() {
       advisories: (feed.items ?? []).map((i) => ({
         file: i.file,
         volcano: i.advisory.volcano ?? "Unknown",
-        summary: i.ash.summary,
+        summary: ashSentence(i.ash, t),
       })),
       closures: Object.fromEntries(Object.entries(closures).map(([k, v]) => [k, { reason: v.reason }])),
     };

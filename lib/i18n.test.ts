@@ -2,7 +2,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { detectLocale, EN_MESSAGES, ID_MESSAGES, isLocale, translate, type MessageKey } from "./i18n.ts";
+import {
+  detectLocale,
+  EN_MESSAGES,
+  ID_MESSAGES,
+  isLocale,
+  translate,
+  translateCount,
+  type MessageKey,
+} from "./i18n.ts";
 
 test("both catalogues carry the same keys", () => {
   // A missing key falls back to English, which reads as untranslated rather
@@ -16,6 +24,13 @@ test("no string is left untranslated by copy-paste", () => {
   // Some strings legitimately match: "Zulu (UTC)", "Indonesia", "NOTAM".
   const allowed = new Set<MessageKey>([
     "app.title", // a brand name, not a translatable string
+    // Indonesian has no plural categories, so both forms are the same string.
+    "feed.newCount.one",
+    "feed.newCount.other",
+    "feed.frames.one",
+    "feed.frames.other",
+    "airports.closures.one",
+    "airports.closures.other",
     "time.zulu",
     "feed.areaIndonesia",
     "onboarding.notamTitle",
@@ -63,4 +78,24 @@ test("isLocale guards stored values", () => {
   assert.equal(isLocale("en"), true);
   assert.equal(isLocale("jv"), false);
   assert.equal(isLocale(null), false);
+});
+
+test("counted strings pluralize in English and stay flat in Indonesian", () => {
+  // "4 frame(s)" shipped once; this is what stops it happening again.
+  assert.equal(translateCount("en", "feed.frames", 1), "1 frame");
+  assert.equal(translateCount("en", "feed.frames", 4), "4 frames");
+  assert.equal(translateCount("en", "airports.closures", 1), "1 closure");
+  assert.equal(translateCount("en", "airports.closures", 3), "3 closures");
+  assert.match(translateCount("en", "feed.newCount", 1), /^1 new bulletin since/);
+  assert.match(translateCount("en", "feed.newCount", 2), /^2 new bulletins since/);
+
+  // Indonesian has no plural categories; both forms are deliberately equal.
+  assert.equal(translateCount("id", "feed.frames", 1), "1 bingkai");
+  assert.equal(translateCount("id", "feed.frames", 4), "4 bingkai");
+  assert.equal(translateCount("id", "airports.closures", 5), "5 penutupan");
+});
+
+test("no counted string still carries a (s) placeholder", () => {
+  const sloppy = (Object.keys(EN_MESSAGES) as MessageKey[]).filter((k) => EN_MESSAGES[k].includes("(s)"));
+  assert.deepEqual(sloppy, [], `lazy pluralization left in: ${sloppy.join(", ")}`);
 });
