@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchLatestBulletins, fetchLiveBulletins, getLastFetchStats } from "@/lib/darwin";
+import { stats as cacheStats } from "@/lib/bulletin-cache";
 import { matchesArea } from "@/lib/area";
 import { assessAsh, type AshAssessment } from "@/lib/eruption";
 import { availableFrames, frameGeoJSON, parseVaaText, type FrameKey } from "@/lib/vaa";
@@ -40,6 +41,8 @@ type Payload = {
   total: number;
   /** Transfer accounting, so the polling cost is visible rather than assumed. */
   fetch: { scanned: number; downloaded: number; fromCache: number };
+  /** Whether the bulletin cache survives a cold start. */
+  cache: { durable: boolean; entries: number };
   advisories: FeedAdvisory[];
 };
 
@@ -61,6 +64,7 @@ async function build(limit: number, withAsh: boolean, live: boolean): Promise<Pa
     source: live ? "ftp://ftp.bom.gov.au/anon/gen/fwo/" : "ftp://ftp.bom.gov.au/anon/gen/vaac/",
     total: bulletins.length,
     fetch: getLastFetchStats(),
+    cache: (({ durable, entries }) => ({ durable, entries }))(cacheStats()),
     advisories: bulletins.map((b) => {
       const advisory = parseVaaText(b.text);
       const frames = availableFrames(advisory);
