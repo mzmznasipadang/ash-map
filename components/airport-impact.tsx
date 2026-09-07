@@ -24,12 +24,22 @@ function byFrame(impact: Impact) {
   return FRAME_ORDER.filter((f) => map.has(f)).map((f) => ({ frame: f, levels: [...map.get(f)!] }));
 }
 
+type NotamItem = {
+  id: string;
+  body: string;
+  scope: string | null;
+  effective: string | null;
+  expiration: string | null;
+  ashRelated: boolean;
+  closure: boolean;
+};
+
 type NotamState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "unconfigured"; message: string }
   | { status: "error"; message: string; hint?: string }
-  | { status: "ok"; count: number; ashRelated: number; notams: { id: string; text: string; ashRelated: boolean }[] };
+  | { status: "ok"; count: number; ashRelated: number; closures: number; notams: NotamItem[] };
 
 function NotamPanel({ icao }: { icao: string }) {
   const [state, setState] = useState<NotamState>({ status: "idle" });
@@ -44,7 +54,13 @@ function NotamPanel({ icao }: { icao: string }) {
       } else if (!res.ok) {
         setState({ status: "error", message: data.error ?? `Lookup failed (${res.status})`, hint: data.hint });
       } else {
-        setState({ status: "ok", count: data.count, ashRelated: data.ashRelated, notams: data.notams ?? [] });
+        setState({
+          status: "ok",
+          count: data.count,
+          ashRelated: data.ashRelated,
+          closures: data.closures ?? 0,
+          notams: data.notams ?? [],
+        });
       }
     } catch (e) {
       setState({ status: "error", message: (e as Error).message });
@@ -89,26 +105,70 @@ function NotamPanel({ icao }: { icao: string }) {
     return <p className="text-xs text-muted-foreground">No active NOTAMs returned for {icao}.</p>;
   }
 
+  // Ash notices and closures are the reason to look; the rest is counted, not
+  // listed. A busy hub returns ninety-odd NOTAMs, almost all en-route.
+  const notable = state.notams.filter((n) => n.ashRelated || n.closure);
+  const shown = notable.length > 0 ? notable.slice(0, 4) : state.notams.slice(0, 2);
+
   return (
-    <div className="space-y-1.5">
-      <p className="text-xs text-muted-foreground">
-        {state.count} active NOTAM{state.count === 1 ? "" : "s"}
-        {state.ashRelated > 0 ? `, ${state.ashRelated} mentioning volcanic ash` : ""}
-      </p>
-      <ul className="space-y-1">
-        {state.notams.slice(0, 4).map((n, i) => (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5">
+        <Badge variant="outline" className="text-[10px]">
+          {state.count} active
+        </Badge>
+        {state.ashRelated > 0 && (
+          <Badge variant="destructive" className="text-[10px]">
+            {state.ashRelated} volcanic ash
+          </Badge>
+        )}
+        {state.closures > 0 && (
+          <Badge variant="secondary" className="text-[10px]">
+            {state.closures} closure{state.closures === 1 ? "" : "s"}
+          </Badge>
+        )}
+      </div>
+
+      <ul className="space-y-1.5">
+        {shown.map((n, i) => (
           <li
             key={n.id || i}
-            className={`rounded-sm px-2 py-1 font-mono text-[11px] leading-relaxed ${
-              n.ashRelated ? "bg-destructive/10 text-foreground" : "bg-muted/50 text-muted-foreground"
+            className={`space-y-1 rounded-md px-2 py-1.5 ${
+              n.ashRelated ? "bg-destructive/10" : n.closure ? "bg-muted" : "bg-muted/50"
             }`}
           >
-            {n.ashRelated && <span className="mr-1 font-sans font-medium">Ash:</span>}
-            {n.text.slice(0, 180)}
-            {n.text.length > 180 ? "…" : ""}
+            <p className="flex flex-wrap items-center gap-1.5">
+              <span className="font-mono text-[10px] text-muted-foreground">{n.id}</span>
+              {n.ashRelated && (
+                <Badge variant="destructive" className="text-[10px]">
+                  Volcanic ash
+                </Badge>
+              )}
+              {n.closure && !n.ashRelated && (
+                <Badge variant="secondary" className="text-[10px]">
+                  Closure
+                </Badge>
+              )}
+            </p>
+            <p className="text-[11px] leading-relaxed text-foreground">{n.body || "(no item E text)"}</p>
+            {n.effective && (
+              <p className="font-mono text-[10px] text-muted-foreground">
+                {new Date(n.effective).toISOString().slice(0, 16).replace("T", " ")}Z &rarr;{" "}
+                {n.expiration
+                  ? `${new Date(n.expiration).toISOString().slice(0, 16).replace("T", " ")}Z`
+                  : "until further notice"}
+              </p>
+            )}
           </li>
         ))}
       </ul>
+
+      {notable.length > shown.length && (
+        <p className="text-xs text-muted-foreground">
+          {notable.length - shown.length} more ash or closure notice
+          {notable.length - shown.length === 1 ? "" : "s"} not shown.
+        </p>
+      )}
+      <p className="text-[10px] text-muted-foreground">Source: SkyLink NOTAM API (FAA SWIM FNS)</p>
     </div>
   );
 }

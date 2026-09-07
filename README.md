@@ -25,11 +25,21 @@ On Vercel, add it under Settings → Environment Variables, or:
 vercel env add SKYLINK_API_KEY
 ```
 
-A RapidAPI key alone is not enough: RapidAPI gates each API separately, so the
-account must also be **subscribed** to the SkyLink NOTAM API's free Basic plan.
-An unsubscribed key returns `403 {"message":"You are not subscribed to this
-API."}`, which the route passes through with a hint rather than reporting a
-generic failure.
+SkyLink sells the same data through **two channels**, and they are not
+interchangeable:
+
+| | Direct | RapidAPI |
+|---|---|---|
+| Key | UUID licence key (own checkout, billed via Polar) | long dashless marketplace key |
+| Base URL | `https://data.skylinkapi.com/v3.1` | `https://skylink-api.p.rapidapi.com` |
+| Header | `x-api-key` | `x-rapidapi-key` + host |
+
+The route infers the channel from the key's shape, because sending one
+channel's key to the other's host returns `403 {"message":"You are not
+subscribed to this API."}` — which reads like a bug here rather than the
+credential mismatch it is. `SKYLINK_API_CHANNEL` overrides the inference. On
+RapidAPI the account must additionally be *subscribed* to the API; a valid key
+alone is not enough.
 
 Without a key, `/api/notams/<icao>` reports itself unconfigured and the airport
 panel says so; everything else works unchanged. The key is read server-side
@@ -279,7 +289,7 @@ flight-level bands.
 
 ## What was verified
 
-- `npm test` — 56 checks over the VAA parser, the morph math, the wind grid,
+- `npm test` — 64 checks over the VAA parser, the morph math, the wind grid,
   the Darwin feed's file selection, and DTG parsing across month and year
   boundaries, on `node:test` + `node:assert` with no test framework.
 - `npm run build` and `tsc --noEmit` complete cleanly; `eslint .` is clean.
@@ -368,6 +378,7 @@ lib/
   airports.ts            airports in/around Indonesia (from OurAirports)
   darwin.ts              BOM FTP client + product-file selection
   impact.ts              which airports sit under a cloud, and how high
+  notams.ts              SkyLink channel/field normalization
   logo.ts                the app mark, shared by the generated icons
   area.ts                Indonesia bbox + area matching
   bulletin-cache.ts      immutable-file cache (memory + temp dir)
