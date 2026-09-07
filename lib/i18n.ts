@@ -18,7 +18,7 @@ export const LOCALES: { code: Locale; label: string; native: string }[] = [
 ];
 
 const en = {
-  "app.title": "Volcanic Ash & Wind Map",
+  "app.title": "AshMap",
   "app.tagline": "Real ICAO advisory polygons, live wind, animated forecast drift",
 
   "map.loading": "Reading the Darwin VAAC feed…",
@@ -179,7 +179,7 @@ const en = {
 export type MessageKey = keyof typeof en;
 
 const id: Record<MessageKey, string> = {
-  "app.title": "Peta Abu Vulkanik & Angin",
+  "app.title": "AshMap",
   "app.tagline": "Poligon adviso ICAO asli, angin terkini, animasi pergerakan prakiraan",
 
   "map.loading": "Membaca umpan VAAC Darwin…",

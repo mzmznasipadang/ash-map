@@ -1,7 +1,8 @@
-# Volcanic Ash & Wind Map
+# AshMap
 
-A Next.js + Leaflet application that plots **real** Volcanic Ash Advisory (VAA)
-polygons and **live** wind vectors on a map, with the forecast drift animated.
+Monitor volcanic ash in Indonesia. A Next.js + Leaflet application that plots
+**real** Volcanic Ash Advisory (VAA) polygons and **live** wind vectors on a
+map, with the forecast drift animated.
 
 **Live: https://ash-map-blush.vercel.app**
 
@@ -53,13 +54,20 @@ Two things to know about running the FTP route on serverless:
   deploy rather than assuming: hit `/api/darwin?area=indonesia` and check the
   `fetch` block in the response is non-zero. If a platform blocks non-HTTP
   egress, that route is the only thing that breaks; the rest of the app works.
-- **Cold starts drop the cache.** The bulletin cache lives in memory plus the
-  OS temp dir, neither of which survives a cold start, so a cold request
-  re-downloads the live slots. That is 8 small files and about 4 seconds, so
-  it is cheap — but on a busy deployment, moving the cache to a durable store
-  (Vercel KV, Upstash, any Redis) restores the "download each bulletin once"
-  property. `lib/bulletin-cache.ts` is the only file that needs to change; it
-  already has a get/set/has interface.
+- **Cold starts drop the cache**, unless Redis is configured. The bulletin
+  cache is three layers: memory, then Redis when its env vars are present, then
+  the OS temp dir. On a server the first and third are enough. On serverless
+  every cold start begins with an empty process and an empty filesystem, so
+  without Redis a cold request re-downloads the live slots — 8 small files and
+  about 4 seconds, cheap but wasteful.
+
+  To make it durable, add a Redis store from the Vercel Marketplace
+  (Storage → Redis, which provisions Upstash) and redeploy. The integration
+  injects `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, which is all
+  the cache looks for; the legacy `KV_REST_API_*` names are accepted too.
+
+  **Vercel KV itself is deprecated** — its own package says so, and existing
+  stores were migrated to Upstash Redis. Do not reach for `@vercel/kv`.
 
 `maxDuration = 30` is declared on both FTP routes because the serverless
 default is 10s and a cold fetch is ~4s, which leaves no headroom if BOM is slow.

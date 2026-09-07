@@ -14,7 +14,7 @@ export default function AppleIcon() {
         src={logoDataUri({ inset: 18 })}
         width={size.width}
         height={size.height}
-        alt="Volcanic Ash & Wind Map"
+        alt="AshMap"
       />
     ),
     size

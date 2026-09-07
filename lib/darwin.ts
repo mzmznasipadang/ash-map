@@ -106,7 +106,7 @@ export async function fetchLatestBulletins(
 
         // A published bulletin is immutable, so a cache hit skips the transfer
         // entirely. In steady state only the newest file or two are misses.
-        let text = cache.get(f.name);
+        let text = await cache.get(f.name);
         if (text === undefined) {
           const chunks: Buffer[] = [];
           const sink = new Writable({
@@ -117,7 +117,7 @@ export async function fetchLatestBulletins(
           });
           await client.downloadTo(sink, `${BASE}/${year}/${f.name}`);
           text = Buffer.concat(chunks).toString("utf8");
-          cache.set(f.name, text);
+          await cache.set(f.name, text);
           downloaded++;
         }
 
@@ -202,7 +202,7 @@ export async function fetchLiveBulletins(): Promise<FetchedBulletin[]> {
       const stamp = entry.rawModifiedAt || entry.modifiedAt?.toISOString() || "";
       const key = `live:${entry.name}@${stamp}`;
 
-      let text = cache.get(key);
+      let text = await cache.get(key);
       if (text === undefined) {
         const chunks: Buffer[] = [];
         const sink = new Writable({
@@ -213,7 +213,7 @@ export async function fetchLiveBulletins(): Promise<FetchedBulletin[]> {
         });
         await client.downloadTo(sink, `${LIVE_DIR}/${entry.name}`);
         text = Buffer.concat(chunks).toString("utf8");
-        cache.set(key, text);
+        await cache.set(key, text);
         downloaded++;
       }
 

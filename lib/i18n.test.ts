@@ -15,6 +15,7 @@ test("both catalogues carry the same keys", () => {
 test("no string is left untranslated by copy-paste", () => {
   // Some strings legitimately match: "Zulu (UTC)", "Indonesia", "NOTAM".
   const allowed = new Set<MessageKey>([
+    "app.title", // a brand name, not a translatable string
     "time.zulu",
     "feed.areaIndonesia",
     "onboarding.notamTitle",

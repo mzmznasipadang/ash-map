@@ -14,9 +14,9 @@ import { BRAND_NAVY } from "@/lib/logo";
 const sans = Geist({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
-const TITLE = "Volcanic Ash & Wind Map";
+const TITLE = "AshMap";
 const DESCRIPTION =
-  "Live ICAO volcanic ash advisories from the Darwin VAAC, plotted by flight level with live wind and animated forecast drift.";
+  "Monitor volcanic ash in Indonesia: live Darwin VAAC advisories plotted by flight level, with live wind, animated forecast drift and affected airports.";
 
 export const metadata: Metadata = {
   // Required for OG/Twitter image URLs to resolve absolutely, which is what
