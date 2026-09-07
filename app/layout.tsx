@@ -1,9 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
+import { AnalyticsConsent } from "@/components/consent";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BRAND_NAVY } from "@/lib/logo";
@@ -75,7 +74,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`h-full antialiased ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
-      <body className="h-full overflow-hidden bg-background font-sans text-foreground">
+      {/* No overflow-hidden here: the map pins its own scrolling (see
+          components/ash-map-app.tsx), and clipping the document would cut the
+          legal pages off at the fold. */}
+      <body className="h-full bg-background font-sans text-foreground">
         {/* Read without executing anything, which matters here: the served
             HTML is only the app shell, so this is the most reliable
             description a crawler gets. */}
@@ -101,8 +103,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
-        <Analytics />
-        <SpeedInsights />
+        {/* Loads nothing until the visitor accepts. */}
+        <AnalyticsConsent />
       </body>
     </html>
   );

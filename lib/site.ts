@@ -7,6 +7,26 @@ export const SITE_TAGLINE = "Monitor volcanic ash in Indonesia";
 export const SITE_DESCRIPTION =
   "Monitor volcanic ash in Indonesia: live Darwin VAAC advisories plotted by flight level, with live wind, animated forecast drift, PVMBG volcano alert levels and the airports under the ash.";
 
+/**
+ * The social preview card, app/opengraph-image.png.
+ *
+ * The file convention alone is not enough here. Next merges metadata shallowly
+ * from the root segment down, and `openGraph` is a nested field — so any route
+ * that exports an `openGraph` object *replaces* the root's, images included.
+ * /en, /id and the legal pages all export one, which left every real page of
+ * this site sharing with no preview image at all while /404 had one. Naming
+ * the image in each of those objects is what keeps it.
+ *
+ * The path is the served route, not the hashed URL the file convention emits;
+ * the hash is cache-busting, and a link preview is fetched fresh anyway.
+ */
+export const OG_IMAGE = {
+  url: "/opengraph-image.png",
+  width: 1200,
+  height: 630,
+  alt: "AshMap — Monitor volcanic ash in Indonesia",
+} as const;
+
 export const AUTHOR = { name: "Victor Chandra", url: "https://github.com/mzmznasipadang" };
 export const REPO_URL = "https://github.com/mzmznasipadang/ash-map";
 

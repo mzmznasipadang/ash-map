@@ -6,8 +6,9 @@
 // crawler with no language preference.
 
 import type { Metadata } from "next";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from "./site.ts";
+import { OG_IMAGE, SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from "./site.ts";
 import type { Locale } from "./i18n.ts";
+import { legalDoc, type LegalKind } from "./legal.ts";
 
 const COPY: Record<Locale, { title: string; description: string }> = {
   en: {
@@ -45,7 +46,49 @@ export function localeMetadata(locale: Locale): Metadata {
       description: copy.description,
       locale: locale === "id" ? "id_ID" : "en_US",
       alternateLocale: locale === "id" ? "en_US" : "id_ID",
+      images: [OG_IMAGE],
     },
-    twitter: { card: "summary_large_image", title: copy.title, description: copy.description },
+    twitter: { card: "summary_large_image", title: copy.title, description: copy.description, images: [OG_IMAGE] },
+  };
+}
+
+/**
+ * The legal pages. Same hreflang shape as the map routes — each canonical at
+ * its own address, pointing at its translation — so the four URLs are two
+ * documents in two languages rather than four unrelated pages.
+ *
+ * The title is not `absolute` here: these should read "Privacy · AshMap" via
+ * the root layout's template, because unlike the map they are a page *of* a
+ * site rather than the site itself.
+ */
+export function legalMetadata(locale: Locale, kind: LegalKind): Metadata {
+  const doc = legalDoc(locale, kind);
+  return {
+    title: doc.title,
+    description: doc.description,
+    alternates: {
+      canonical: `/${locale}/${kind}`,
+      languages: {
+        en: `/en/${kind}`,
+        id: `/id/${kind}`,
+        "x-default": `/en/${kind}`,
+      },
+    },
+    openGraph: {
+      type: "article",
+      url: `/${locale}/${kind}`,
+      siteName: SITE_NAME,
+      title: `${doc.title} · ${SITE_NAME}`,
+      description: doc.description,
+      locale: locale === "id" ? "id_ID" : "en_US",
+      alternateLocale: locale === "id" ? "en_US" : "id_ID",
+      images: [OG_IMAGE],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${doc.title} · ${SITE_NAME}`,
+      description: doc.description,
+      images: [OG_IMAGE],
+    },
   };
 }

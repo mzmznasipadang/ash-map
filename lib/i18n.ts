@@ -208,6 +208,20 @@ const en = {
   "health.attention.one": "{count} source needs attention",
   "health.attention.other": "{count} sources need attention",
   "health.indicator": "Source health: {state}",
+
+  "legal.privacy": "Privacy",
+  "legal.terms": "Terms",
+  "legal.updated": "Last updated {date}",
+  "legal.back": "Back to the map",
+  "legal.analytics": "Analytics choice",
+
+  "consent.title": "Analytics",
+  "consent.body":
+    "This site sets no cookies. It can load Vercel's cookieless analytics to count page views and load times — only if you say yes.",
+  "consent.accept": "Allow",
+  "consent.decline": "No thanks",
+  "consent.more": "Privacy",
+  "consent.reopen": "Change analytics choice",
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -407,6 +421,20 @@ const id: Record<MessageKey, string> = {
   "health.attention.one": "{count} sumber perlu diperiksa",
   "health.attention.other": "{count} sumber perlu diperiksa",
   "health.indicator": "Kesehatan sumber data: {state}",
+
+  "legal.privacy": "Privasi",
+  "legal.terms": "Ketentuan",
+  "legal.updated": "Terakhir diperbarui {date}",
+  "legal.back": "Kembali ke peta",
+  "legal.analytics": "Pilihan analitik",
+
+  "consent.title": "Analitik",
+  "consent.body":
+    "Situs ini tidak memasang cookie. Situs dapat memuat analitik tanpa cookie dari Vercel untuk menghitung kunjungan dan waktu muat — hanya jika Anda mengizinkan.",
+  "consent.accept": "Izinkan",
+  "consent.decline": "Tidak",
+  "consent.more": "Privasi",
+  "consent.reopen": "Ubah pilihan analitik",
 };
 
 const CATALOG: Record<Locale, Record<MessageKey, string>> = { en, id };
