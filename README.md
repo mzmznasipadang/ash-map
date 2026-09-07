@@ -263,7 +263,14 @@ npm test        # parser + morph + wind-grid checks (node:test, no framework)
    most hourly. A tab that sat hidden past the interval refreshes when it comes
    back, and there is a manual Refresh button.
 
-13. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
+13. **Heights in metres, not just flight levels** — every altitude reads
+    `FL500 (50,000 ft / 15,200 m)`. Flight levels are hundreds of feet and mean
+    nothing outside aviation, and Indonesia is metric. A legend fixed to the
+    map's right edge carries the same conversion for the colour bands, since
+    the sidebar is closed on a phone and collapsed on a laptop. It starts
+    collapsed below 640px, where it would otherwise take 40% of the width.
+
+14. **UI** — shadcn/ui/Tailwind sidebar with collapsible sections, an advisory
    detail card, and a legend; a slide-over panel below `lg`; light/dark theme
    with a toggle in the header.
 
@@ -400,6 +407,7 @@ components/
   raw-bulletin.tsx       the bulletin as issued, with copy
   credits.tsx            author and data-source attribution
   time-mode.tsx          Zulu/local preference, explainer, <Dtg>
+  map-legend.tsx         the colour bands, fixed to the map
   airport-impact.tsx     affected-airport list + NOTAM lookup
   wind-layer.tsx         the wind field as one SVG layer
   theme-provider.tsx     next-themes wiring

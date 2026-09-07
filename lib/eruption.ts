@@ -61,9 +61,25 @@ export function describeMovement(movement?: string): string | undefined {
   return `${COMPASS[m[1]] ?? m[1]} at ${Number(m[2])} kt`;
 }
 
-/** Feet, rounded to the nearest hundred, for a flight level. FL500 = 50,000 ft. */
+/** Feet for a flight level. FL is hundreds of feet, so FL500 = 50,000 ft. */
 export function flightLevelToFeet(fl: number): number {
   return fl * 100;
+}
+
+/** Metres for a flight level, to the nearest 100 m. */
+export function flightLevelToMetres(fl: number): number {
+  return Math.round((fl * 100 * 0.3048) / 100) * 100;
+}
+
+/**
+ * A flight level with the heights a non-specialist can picture. "FL500" means
+ * nothing outside aviation; 15,200 m does.
+ */
+export function describeAltitude(fl: number): string {
+  if (fl <= 0) return "an unreported height";
+  return `FL${fl} (${flightLevelToFeet(fl).toLocaleString("en-US")} ft / ${flightLevelToMetres(
+    fl
+  ).toLocaleString("en-US")} m)`;
 }
 
 export function assessAsh(advisory: VaaAdvisory): AshAssessment {
@@ -95,13 +111,8 @@ export function assessAsh(advisory: VaaAdvisory): AshAssessment {
   else if (ENDED_RE.test(`${advisory.remark ?? ""} ${advisory.eruptionDetails ?? ""}`)) status = "ash-ended";
   else status = "unknown";
 
-  const describeBand = (b: AshBand) => {
-    const height =
-      b.ceiling > 0
-        ? `FL${b.ceiling} (about ${flightLevelToFeet(b.ceiling).toLocaleString("en-US")} ft)`
-        : "an unreported height";
-    return `${height}${b.drift ? ` drifting ${b.drift}` : ""}`;
-  };
+  const describeBand = (b: AshBand) =>
+    `${describeAltitude(b.ceiling)}${b.drift ? ` drifting ${b.drift}` : ""}`;
 
   const lead =
     status === "ash-observed"

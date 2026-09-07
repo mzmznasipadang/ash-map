@@ -334,7 +334,9 @@ export function AdvisoryPanel({
       </Section>
       <Section title="Legend" icon={<span aria-hidden="true" className="size-4 rounded-sm bg-gradient-to-br from-sky-400 to-purple-600" />}>
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Ash polygon — advisory flight level</p>
+          <p className="text-xs text-muted-foreground">
+            Ash polygon — advisory flight level. FL is hundreds of feet, so FL300 is 30,000 ft.
+          </p>
           <div className="grid grid-cols-2 gap-1.5">
             {FL_BANDS.map((b) => (
               <div key={b.label} className="flex items-center gap-2 text-xs">
@@ -343,7 +345,10 @@ export function AdvisoryPanel({
                   className="size-3 shrink-0 rounded-sm border border-black/10"
                   style={{ background: b.color }}
                 />
-                {b.label}
+                <span className="min-w-0">
+                  {b.label}
+                  <span className="block text-[10px] text-muted-foreground tabular-nums">{b.metres}</span>
+                </span>
               </div>
             ))}
           </div>

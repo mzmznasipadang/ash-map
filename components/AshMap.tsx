@@ -17,6 +17,7 @@ import { WindLayer } from "@/components/wind-layer";
 import type { WindVector } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MapLegend } from "@/components/map-legend";
 import { useTimeMode } from "@/components/time-mode";
 import { formatDtg, parseDtg, relativeToNow } from "@/lib/dtg";
 
@@ -490,6 +491,12 @@ export default function AshMap({
       {/* z-10, not z-400. The map is its own stacking context now, so the
           transport only has to sit above the map — anything higher paints over
           the slide-over panel, which is exactly what z-400 was doing. */}
+      {/* Sticky to the map's right edge, clear of the transport bar below and
+          the zoom control on the left. */}
+      <div className="pointer-events-none absolute top-3 right-3 z-20 flex max-h-[calc(100%-6rem)] justify-end">
+        <MapLegend />
+      </div>
+
       {canAnimate && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3 sm:p-4">
           <div className="pointer-events-auto mx-auto flex max-w-2xl flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border bg-background/85 p-2 shadow-lg backdrop-blur-md">

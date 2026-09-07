@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { assessAsh, describeMovement, flightLevelToFeet } from "./eruption.ts";
+import { assessAsh, describeAltitude, describeMovement, flightLevelToFeet, flightLevelToMetres } from "./eruption.ts";
 import { advisoryGeoJSON, availableFrames, framePolygons, parseVaaText } from "./vaa.ts";
 
 const RING = "S0400 E08700 - S1200 E08100 - S1500 E09600 - S0400 E08700";
@@ -14,9 +14,17 @@ test("describeMovement turns the MOV clause into words", () => {
   assert.equal(describeMovement("MOV UNKNOWN"), undefined);
 });
 
-test("flightLevelToFeet converts flight levels", () => {
+test("a flight level converts to both feet and metres", () => {
+  // FL is hundreds of feet. Metres matter because "FL500" means nothing to
+  // anyone outside aviation, and Indonesia is metric.
   assert.equal(flightLevelToFeet(500), 50000);
   assert.equal(flightLevelToFeet(120), 12000);
+  assert.equal(flightLevelToMetres(500), 15200);
+  assert.equal(flightLevelToMetres(150), 4600);
+  assert.equal(flightLevelToMetres(40), 1200);
+
+  assert.equal(describeAltitude(500), "FL500 (50,000 ft / 15,200 m)");
+  assert.equal(describeAltitude(0), "an unreported height");
 });
 
 test("ash observed now is distinguished from forecast only", () => {
@@ -26,7 +34,7 @@ OBS VA CLD: SFC/FL500 ${RING} MOV SW 10KT`);
   assert.equal(a.status, "ash-observed");
   assert.equal(a.maxFlightLevel, 500);
   assert.equal(a.drift, "southwest at 10 kt");
-  assert.match(a.summary, /Ash observed to FL500 \(about 50,000 ft\) drifting southwest at 10 kt/);
+  assert.match(a.summary, /Ash observed to FL500 \(50,000 ft \/ 15,200 m\) drifting southwest at 10 kt/);
 
   const forecast = parseVaaText(`VOLCANO: KRAKATAU 262000
 OBS VA CLD: NOT IDENTIFIABLE
@@ -147,8 +155,8 @@ test("each flight-level band keeps its own drift", () => {
   );
 
   // The regression: FL500's height must never be paired with FL150's heading.
-  assert.match(a.summary, /FL500 \(about 50,000 ft\) drifting southwest at 10 kt/);
-  assert.match(a.summary, /FL150 \(about 15,000 ft\) drifting southeast at 5 kt/);
+  assert.match(a.summary, /FL500 \(50,000 ft \/ 15,200 m\) drifting southwest at 10 kt/);
+  assert.match(a.summary, /FL150 \(15,000 ft \/ 4,600 m\) drifting southeast at 5 kt/);
   assert.ok(!/FL500[^;]*southeast/.test(a.summary), `FL500 got the wrong heading: ${a.summary}`);
 });
 
@@ -172,5 +180,5 @@ RMK: VA NOT IDENTIFIABLE ON CURRENT SATELLITE IMAGERY.`)
   // "NOT IDENTIFIABLE" in the remark must not win over a real estimated cloud.
   assert.equal(a.status, "ash-estimated");
   assert.equal(a.maxFlightLevel, 70);
-  assert.match(a.summary, /^Ash estimated to FL70 \(about 7,000 ft\) drifting north at 5 kt\.$/);
+  assert.match(a.summary, /^Ash estimated to FL70 \(7,000 ft \/ 2,100 m\) drifting north at 5 kt\.$/);
 });

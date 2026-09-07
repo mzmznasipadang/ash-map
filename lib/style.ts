@@ -7,10 +7,12 @@ export function flightLevelCeiling(flightLevel: string): number {
 }
 
 export const FL_BANDS = [
-  { max: 150, color: "#4aa3e8", label: "≤ FL150" },
-  { max: 300, color: "#f5a623", label: "FL151–300" },
-  { max: 450, color: "#e0433d", label: "FL301–450" },
-  { max: Infinity, color: "#9b30d9", label: "> FL450" },
+  // `metres` is the band's ceiling in metres, for readers who do not think in
+  // flight levels. FL is hundreds of feet: FL150 = 15,000 ft = 4,600 m.
+  { max: 150, color: "#4aa3e8", label: "≤ FL150", metres: "≤ 4,600 m" },
+  { max: 300, color: "#f5a623", label: "FL151–300", metres: "4,600–9,100 m" },
+  { max: 450, color: "#e0433d", label: "FL301–450", metres: "9,100–13,700 m" },
+  { max: Infinity, color: "#9b30d9", label: "> FL450", metres: "above 13,700 m" },
 ];
 
 export function flightLevelColor(flightLevel: string): string {
