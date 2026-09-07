@@ -213,8 +213,13 @@ export async function fetchLiveBulletins(): Promise<FetchedBulletin[]> {
         });
         await client.downloadTo(sink, `${LIVE_DIR}/${entry.name}`);
         text = Buffer.concat(chunks).toString("utf8");
-        await cache.set(key, text);
         downloaded++;
+
+        // Only cache what the app will actually read back. IDY41* also covers
+        // the space-weather bulletins, which are discarded below and reissued
+        // more often than volcanic advisories — so caching them filled roughly
+        // a quarter of the store with entries that are never used.
+        if (isVaaBulletin(text)) await cache.set(key, text);
       }
 
       if (!isVaaBulletin(text)) continue;
