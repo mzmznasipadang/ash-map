@@ -4,7 +4,10 @@
 // carry a Commonwealth of Australia copyright notice, and Open-Meteo's free
 // tier is CC BY 4.0, which requires credit.
 
+import Link from "next/link";
+
 import { useI18n } from "@/components/i18n";
+import { ReopenConsent } from "@/components/consent";
 
 const SOURCES = [
   {
@@ -40,7 +43,9 @@ const SOURCES = [
 ];
 
 export function Credits() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
+  const link =
+    "rounded-sm underline underline-offset-2 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none";
   return (
     <div className="space-y-3 text-xs">
       <p className="text-muted-foreground">
@@ -82,6 +87,17 @@ export function Credits() {
       <p className="leading-relaxed text-muted-foreground">
 {t("credits.notOfficial")}
       </p>
+
+      {/* The panel is the only chrome this app has, so it is also the footer. */}
+      <div className="flex flex-wrap gap-x-3 gap-y-1 border-t pt-3 text-muted-foreground">
+        <Link href={`/${locale}/privacy`} className={link}>
+          {t("legal.privacy")}
+        </Link>
+        <Link href={`/${locale}/terms`} className={link}>
+          {t("legal.terms")}
+        </Link>
+        <ReopenConsent className={link}>{t("legal.analytics")}</ReopenConsent>
+      </div>
     </div>
   );
 }

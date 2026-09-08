@@ -501,7 +501,11 @@ export default function AshMap({
       </div>
 
       {canAnimate && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3 sm:p-4">
+        // The bottom padding clears Leaflet's attribution strip, which sits
+        // under this and wraps to two lines on a phone. Attribution is a
+        // licence obligation for BOM and Open-Meteo, so covering it is not a
+        // cosmetic problem.
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-3 pt-3 pb-12 sm:px-4 sm:pt-4 sm:pb-9">
           <div className="pointer-events-auto mx-auto flex max-w-2xl flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl border bg-background/85 p-2 shadow-lg backdrop-blur-md">
             <Button size="icon" onClick={toggle} aria-label={playing ? "Pause" : "Play"}>
               {playing ? <Pause className="size-4" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}

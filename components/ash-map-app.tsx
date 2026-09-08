@@ -393,7 +393,7 @@ function MapView() {
   return (
     <>
       <Onboarding />
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col overflow-hidden">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-4">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
@@ -432,7 +432,10 @@ function MapView() {
               which the map is an empty basemap with no transport bar and no
               reason given. Saying so beats looking broken. */}
           {plotted.length === 0 && (
-            <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-3">
+            // Below the legend on a narrow screen, beside it once there is
+            // room: centred at top-3 the toast runs under the legend control
+            // in the top-right corner.
+            <div className="pointer-events-none absolute inset-x-0 top-14 z-20 flex justify-center px-3 sm:top-3">
               <p
                 aria-live="polite"
                 className="rounded-full border bg-background/90 px-3 py-1.5 text-xs shadow-sm backdrop-blur-md"
